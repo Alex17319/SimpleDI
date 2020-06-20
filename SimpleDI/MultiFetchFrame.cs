@@ -61,24 +61,6 @@ namespace SimpleDI
 			if (_disposed || IsCleanupFree) return;
 			_disposed = true;
 
-			var a = new List<(object d, Type t)>();
-			using (a.Aggregate(Dependencies.BeginSimultaneousInject(), (soFar, x) => soFar.Alongside(x.d, x.t)))
-			{
-
-			}
-
-			// Interface/syntax test:
-			//	using (Dependencies.InjectWild(new List<int>()).Alongside(5).Alongside(new Exception()))
-			//	{
-			//		using (Dependencies.Get(out List<int> l).And(out int i))
-			//		{
-			//			using (Dependencies.GetOuterDependency(l, out Exception e))
-			//			{
-			//	
-			//			}
-			//		}
-			//	}
-
 			Dependencies.CloseFetchFrame(this);
 		}
 	}
