@@ -65,7 +65,7 @@ namespace SimpleDI
 		{
 			addToStack(dependency, typeof(T));
 
-			return new InjectFrame(stackLevel++, new[] { typeof(T) });
+			return new InjectFrame(stackLevel++, typeof(T));
 		}
 
 		public static InjectFrame Inject(object dependency, Type toMatchAgainst)
@@ -76,15 +76,15 @@ namespace SimpleDI
 
 			addToStack(dependency, toMatchAgainst);
 
-			return new InjectFrame(stackLevel++, new[] { toMatchAgainst });
+			return new InjectFrame(stackLevel++, toMatchAgainst);
 		}
 
 
 
-		public static InjectFrame InjectWild<T>(T dependency)
+		public static MultiInjectFrame InjectWild<T>(T dependency)
 			//	where T : class
 		{
-			var result = new InjectFrame(
+			var result = new MultiInjectFrame(
 				stackLevel,
 				addWildcardToStack(dependency, typeof(T)).ToList()
 			);
@@ -93,12 +93,12 @@ namespace SimpleDI
 			return result;
 		}
 
-		public static InjectFrame InjectWild(object dependency)
+		public static MultiInjectFrame InjectWild(object dependency)
 		{
 			ThrowIfArgNull(dependency, nameof(dependency));
 			//	RequireDependencyReferenceType(dependency.GetType());
 
-			var result = new InjectFrame(
+			var result = new MultiInjectFrame(
 				stackLevel,
 				addWildcardToStack(dependency, dependency.GetType()).ToList()
 			);
@@ -118,13 +118,13 @@ namespace SimpleDI
 		/// <param name="dependency">The depencency to add. May be null (to block existing dependencies from being accessed)</param>
 		/// <param name="toMatchAgainst"></param>
 		/// <returns></returns>
-		public static InjectFrame InjectWild(object dependency, Type toMatchAgainst)
+		public static MultiInjectFrame InjectWild(object dependency, Type toMatchAgainst)
 		{
 			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
 			//	RequireDependencyReferenceType(toMatchAgainst);
 
-			var result = new InjectFrame(
+			var result = new MultiInjectFrame(
 				stackLevel,
 				addWildcardToStack(dependency, toMatchAgainst).ToList()
 			);
@@ -135,13 +135,13 @@ namespace SimpleDI
 
 
 
-		public static InjectFrame InjectAll(IEnumerable<KeyValuePair<Type, object>> dependencies)
+		public static MultiInjectFrame InjectAll(IEnumerable<KeyValuePair<Type, object>> dependencies)
 			=> InjectAll(dependencies.Select(d => (dependency: d.Key, toMatchAgainst: d.Value, isWildCard: false)));
 
-		public static InjectFrame InjectAllWild(IEnumerable<KeyValuePair<Type, object>> dependencies)
+		public static MultiInjectFrame InjectAllWild(IEnumerable<KeyValuePair<Type, object>> dependencies)
 			=> InjectAll(dependencies.Select(d => (dependency: d.Key, toMatchAgainst: d.Value, isWildCard: true)));
 
-		public static InjectFrame InjectAll(
+		public static MultiInjectFrame InjectAll(
 			IEnumerable<(Type toMatchAgainst, object dependency, bool isWildcard)> dependencies
 		) {
 			if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
@@ -161,9 +161,11 @@ namespace SimpleDI
 				//		d.toMatchAgainst,
 				//		$"dependency at index {i}"
 				//	);
+
+				i++;
 			}
 
-			var result = new InjectFrame(stackLevel, addAllToStack().ToList());
+			var result = new MultiInjectFrame(stackLevel, addAllToStack().ToList());
 			stackLevel++;
 			return result;
 
@@ -286,27 +288,43 @@ namespace SimpleDI
 		internal static void CloseFrame(InjectFrame frame)
 		{
 			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
-				$"Cannot close frame with stack level '{frame.stackLevel}' different to the current stack level '{stackLevel}'"
+				$"Cannot close frame with stack level '{frame.stackLevel}' " +
+				$"as it is different to the current stack level '{stackLevel}'."
+			);
+
+			uninjectDependency(frame.type, frame.stackLevel);
+		}
+
+		internal static void CloseFrame(MultiInjectFrame frame)
+		{
+			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
+				$"Cannot close frame with stack level '{frame.stackLevel}' " +
+				$"as it is different to the current stack level '{stackLevel}'."
 			);
 
 			foreach (Type t in frame.types)
 			{
-				if (!_dependencyStacks.TryGetValue(t, out var stack)) throw new InjectFrameCloseException(
-					$"No dependency stack for type '{t}' is available."
-				);
-
-				if (stack.Count == 0) throw new InjectFrameCloseException(
-					$"No dependency stack frames for type '{t}' are available."
-				);
-
-				StackedDependency toRemove = stack.Peek();
-				if (toRemove.stackLevel != frame.stackLevel) throw new InjectFrameCloseException(
-					$"Top element of stack for type '{t} ' has stack level '{toRemove.stackLevel}' " +
-					$"but frame to be closed has a different stack level: '{frame.stackLevel}'."
-				);
-
-				stack.Pop();
+				uninjectDependency(t, frame.stackLevel);
 			}
+		}
+
+		private static void uninjectDependency(Type type, int frameStackLevel)
+		{
+			if (!_dependencyStacks.TryGetValue(type, out var stack)) throw new InjectFrameCloseException(
+				$"No dependency stack for type '{type}' is available."
+			);
+
+			if (stack.Count == 0) throw new InjectFrameCloseException(
+				$"No dependency stack frames for type '{type}' are available."
+			);
+
+			StackedDependency toRemove = stack.Peek();
+			if (toRemove.stackLevel != frameStackLevel) throw new InjectFrameCloseException(
+				$"Top element of stack for type '{type}' has stack level '{toRemove.stackLevel}' " +
+				$"but frame to be closed has a different stack level: '{frameStackLevel}'."
+			);
+
+			stack.Pop();
 		}
 
 
@@ -403,7 +421,7 @@ namespace SimpleDI
 				return then(dependency, toMatchAgainst, isWildcard: true);
 			}
 
-			public InjectFrame Inject() => InjectAll(this);
+			public MultiInjectFrame Inject() => InjectAll(this);
 
 			IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 			public IEnumerator<(Type, object, bool isWildcard)> GetEnumerator()

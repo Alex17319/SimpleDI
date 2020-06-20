@@ -14,7 +14,7 @@ namespace SimpleDI
 {
 	/// <summary>See remarks</summary>
 	/// <remarks>
-	/// If the SimpleDI framework works properly and is used correctly, this should never be thrown
+	/// If the SimpleDI framework works properly and is used correctly, this should never be thrown.
 	/// <para/>
 	/// If this is thrown, the SimpleDI framework is in an invalid state, and all future behaviour is undefined.
 	/// </remarks>

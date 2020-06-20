@@ -12,28 +12,27 @@ using System.Threading.Tasks;
 
 namespace SimpleDI
 {
-	public struct InjectFrame : IDisposable
+	public struct MultiInjectFrame : IDisposable
 	{
 		internal readonly int stackLevel;
-		internal readonly Type type;
+		internal readonly IList<Type> types;
 
-		public bool IsNull => this.type == null;
+		public bool IsNull => this.types == null;
 
 		private bool _disposed;
 
-		internal InjectFrame(int stackLevel)
-		{
-			this.stackLevel = stackLevel;
-			this.type = null;
-			this._disposed = false;
-		}
-
-		internal InjectFrame(int stackLevel, Type type)
+		internal MultiInjectFrame(int stackLevel, IList<Type> types)
 		{
 			if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), "Cannot be negative.");
+			if (types == null) throw new ArgumentNullException(nameof(types));
+			int i = 0;
+			foreach (Type t in types) {
+
+				i++;
+			}
 
 			this.stackLevel = stackLevel;
-			this.type = type ?? throw new ArgumentNullException(nameof(type));
+			this.types = types;
 			this._disposed = false;
 		}
 
