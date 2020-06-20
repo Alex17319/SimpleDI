@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 using DependencyStack = System.Collections.Generic.Stack<(int, object)>;
 
-/*
+/* May be useful if attempting to make wildcards dependencies more efficient, though really they're not too bad atm
 
 namespace SimpleDI
 {
