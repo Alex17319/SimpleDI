@@ -43,7 +43,6 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <returns></returns>
 		public static InjectFrame Inject<T>(T dependency)
-			//	where T : class
 		{
 			addToStack_internal(dependency, typeof(T));
 
@@ -61,7 +60,6 @@ namespace SimpleDI
 		{
 			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
-			//	RequireDependencyReferenceType(toMatchAgainst);
 
 			addToStack_internal(dependency, toMatchAgainst);
 
@@ -78,24 +76,7 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <returns></returns>
 		public static SimultaneousInjectFrame InjectWild<T>(T dependency)
-			//	where T : class
 			=> injectSimul_internal(ImmutableStack.Create<Type>(), dependency, typeof(T), isWildcard: true);
-
-		// Somewhat risky, injecting something without knowing what interfaces the underlying object might implement.
-		// Can do this manually with the other overrides instead if you really need to.
-		//	/// <summary>
-		//	/// <see langword="[Call inside using()]"></see>
-		//	/// 
-		//	/// </summary>
-		//	/// <param name="dependency"></param>
-		//	/// <returns></returns>
-		//	public static SimultaneousInjectFrame InjectWild(object dependency)
-		//	{
-		//		ThrowIfArgNull(dependency, nameof(dependency));
-		//		//	RequireDependencyReferenceType(dependency.GetType());
-		//	
-		//		return injectSimul_internal(ImmutableStack.Create<Type>(), dependency, dependency.GetType(), isWildcard: true);
-		//	}
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
@@ -113,7 +94,6 @@ namespace SimpleDI
 		{
 			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
-			//	RequireDependencyReferenceType(toMatchAgainst);
 
 			return injectSimul_internal(ImmutableStack.Create<Type>(), dependency, toMatchAgainst, isWildcard: true);
 		}
@@ -268,7 +248,6 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <returns></returns>
 		public static FetchFrame Get<T>(out T dependency)
-			// where T : class
 		{
 			if (!_dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {
 				throw new DependencyNotFoundException(typeof(T));
@@ -433,13 +412,6 @@ namespace SimpleDI
 				$"and is not an instance of provided match type {type.FullName}."
 			);
 		}
-
-		//	private static void RequireDependencyReferenceType(Type type, string dependencyMoniker = "dependency")
-		//	{
-		//		if (type.IsValueType) throw new ArgumentException(
-		//			$"Cannot add {dependencyMoniker} of type '{type.FullName}' as type is not a reference-type."
-		//		);
-		//	}
 
 
 

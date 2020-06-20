@@ -53,25 +53,6 @@ namespace SimpleDI
 			Dependencies.CloseFetchFrame(this);
 		}
 	}
-
-	//	// Renaming of DependencyFrame for clarity when using Dependencies.Get()
-	//	public struct DependencyFetchFrame : IDisposable
-	//	{
-	//		internal readonly DependencyFrame inner;
-	//	
-	//		internal DependencyFetchFrame(DependencyFrame inner)
-	//		{
-	//			this.inner = inner;
-	//		}
-	//	
-	//		public void Dispose()
-	//		{
-	//			this.inner.Dispose();
-	//		}
-	//	
-	//		public static implicit operator DependencyFetchFrame(DependencyFrame x) => new DependencyFetchFrame(x);
-	//		public static implicit operator DependencyFrame(DependencyFetchFrame x) => x.inner;
-	//	}
 }
 
 //*/
