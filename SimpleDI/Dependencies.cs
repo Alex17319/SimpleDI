@@ -35,7 +35,201 @@ namespace SimpleDI
 
 
 
-		private static void addToStack(object dependency, Type toMatchAgainst)
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
+		public static InjectFrame Inject<T>(T dependency)
+			//	where T : class
+		{
+			addToStack_internal(dependency, typeof(T));
+
+			return new InjectFrame(stackLevel++, typeof(T));
+		}
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <param name="dependency"></param>
+		/// <param name="toMatchAgainst"></param>
+		/// <returns></returns>
+		public static InjectFrame Inject(object dependency, Type toMatchAgainst)
+		{
+			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
+			RequireDependencySubtypeOf(dependency, toMatchAgainst);
+			//	RequireDependencyReferenceType(toMatchAgainst);
+
+			addToStack_internal(dependency, toMatchAgainst);
+
+			return new InjectFrame(stackLevel++, toMatchAgainst);
+		}
+
+
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
+		public static SimultaneousInjectFrame InjectWild<T>(T dependency)
+			//	where T : class
+			=> injectSimul_internal(ImmutableStack.Create<Type>(), dependency, typeof(T), isWildcard: true);
+
+		// Somewhat risky, injecting something without knowing what interfaces the underlying object might implement.
+		// Can do this manually with the other overrides instead if you really need to.
+		//	/// <summary>
+		//	/// <see langword="[Call inside using()]"></see>
+		//	/// 
+		//	/// </summary>
+		//	/// <param name="dependency"></param>
+		//	/// <returns></returns>
+		//	public static SimultaneousInjectFrame InjectWild(object dependency)
+		//	{
+		//		ThrowIfArgNull(dependency, nameof(dependency));
+		//		//	RequireDependencyReferenceType(dependency.GetType());
+		//	
+		//		return injectSimul_internal(ImmutableStack.Create<Type>(), dependency, dependency.GetType(), isWildcard: true);
+		//	}
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// Injects an object that will be returned for all dependency searches
+		/// for any supertype of <paramref name="toMatchAgainst"/>
+		/// </summary>
+		/// <remarks>
+		/// Currently not that efficient - effectively just calls Inject() for every supertype of toMatchAgainst,
+		/// and returns a DependencyFrame that holds all of these types;
+		/// </remarks>
+		/// <param name="dependency">The depencency to add. May be null (to block existing dependencies from being accessed)</param>
+		/// <param name="toMatchAgainst"></param>
+		/// <returns></returns>
+		public static SimultaneousInjectFrame InjectWild(object dependency, Type toMatchAgainst)
+		{
+			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
+			RequireDependencySubtypeOf(dependency, toMatchAgainst);
+			//	RequireDependencyReferenceType(toMatchAgainst);
+
+			return injectSimul_internal(ImmutableStack.Create<Type>(), dependency, toMatchAgainst, isWildcard: true);
+		}
+
+
+
+		public static SimultaneousInjectFrame BeginSimultaneousInject()
+		{
+			return new SimultaneousInjectFrame();
+		}
+
+
+
+		internal static SimultaneousInjectFrame AndInjectSimultaneously<T>(
+			SimultaneousInjectFrame soFar,
+			T dependency,
+			bool isWildcard
+		) {
+			return andInjectMoreSimultaneously_internal(soFar, dependency, typeof(T), isWildcard);
+		}
+
+		internal static SimultaneousInjectFrame AndInjectSimultaneously(
+			SimultaneousInjectFrame soFar,
+			object dependency,
+			Type toMatchAgainst,
+			bool isWildcard
+		) {
+			if (toMatchAgainst == null) throw new ArgumentNullException(
+				nameof(toMatchAgainst),
+				$"Cannot inject dependency with a null Type to match against " +
+				$"(dependency object = '{dependency}', isWildcard = {isWildcard})."
+			);
+			RequireDependencySubtypeOf(dependency, toMatchAgainst);
+
+			return andInjectMoreSimultaneously_internal(soFar, dependency, toMatchAgainst, isWildcard);
+		}
+
+
+
+		private static SimultaneousInjectFrame andInjectMoreSimultaneously_internal(
+			SimultaneousInjectFrame soFar,
+			object dependency,
+			Type toMatchAgainst,
+			bool isWildcard
+		) {
+			if (stackLevel != soFar.stackLevel + 1) throw new InvalidDIStateException(
+				$"Cannot inject another dependency simultaneously as stack level has changed " +
+				$"(object dependency = '{dependency}', Type toMatchAgainst = '{toMatchAgainst}', "+
+				$"current stack level = '{stackLevel}', " +
+				$"required stack level (soFar.stackLevel + 1) = '{soFar.stackLevel + 1}'"
+			);
+
+			stackLevel--;
+			SimultaneousInjectFrame result;
+
+			try {
+				result = injectSimul_internal(
+					soFar.IsEmpty ? ImmutableStack.Create<Type>() : soFar.types,
+					dependency,
+					toMatchAgainst,
+					isWildcard
+				);
+			} finally {
+				stackLevel++;
+			}
+
+			return result;
+		}
+
+		private static SimultaneousInjectFrame injectSimul_internal(
+			ImmutableStack<Type> soFar,
+			object dependency,
+			Type toMatchAgainst,
+			bool isWildcard
+		) {
+			SimultaneousInjectFrame result;
+
+			if (isWildcard)
+			{
+				ImmutableStack<Type> resStack = soFar;
+				foreach (Type t in addWildcardToStack_internal(dependency, toMatchAgainst)) {
+					resStack = resStack.Push(t);
+				}
+
+				result = new SimultaneousInjectFrame(stackLevel, resStack);
+			}
+			else
+			{
+				addToStack_internal(dependency, toMatchAgainst);
+
+				result = new SimultaneousInjectFrame(stackLevel, soFar.Push(toMatchAgainst));
+			}
+
+			stackLevel++;
+			return result;
+		}
+
+		private static IEnumerable<Type> addWildcardToStack_internal(object dependency, Type toMatchAgainst)
+		{
+			// Add each successive base class
+			Type t = dependency.GetType();
+			while (t != null) {
+				addToStack_internal(dependency, t);
+				yield return t;
+				t = t.BaseType;
+			}
+
+			// Add all interfaces (directly or indirectly implemented)
+			foreach (Type iType in toMatchAgainst.GetInterfaces())
+			{
+				addToStack_internal(dependency, toMatchAgainst);
+				yield return iType;
+			}
+		}
+
+		private static void addToStack_internal(object dependency, Type toMatchAgainst)
 		{
 			var toPush = new StackedDependency(stackLevel, dependency);
 
@@ -64,250 +258,6 @@ namespace SimpleDI
 			}
 		}
 
-		private static IEnumerable<Type> addWildcardToStack(object dependency, Type toMatchAgainst)
-		{
-			// Add each successive base class
-			Type t = dependency.GetType();
-			while (t != null) {
-				addToStack(dependency, t);
-				yield return t;
-				t = t.BaseType;
-			}
-
-			// Add all interfaces (directly or indirectly implemented)
-			foreach (Type iType in toMatchAgainst.GetInterfaces())
-			{
-				addToStack(dependency, toMatchAgainst);
-				yield return iType;
-			}
-		}
-
-
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="dependency"></param>
-		/// <returns></returns>
-		public static InjectFrame Inject<T>(T dependency)
-			//	where T : class
-		{
-			addToStack(dependency, typeof(T));
-
-			return new InjectFrame(stackLevel++, typeof(T));
-		}
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <param name="dependency"></param>
-		/// <param name="toMatchAgainst"></param>
-		/// <returns></returns>
-		public static InjectFrame Inject(object dependency, Type toMatchAgainst)
-		{
-			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
-			RequireDependencySubtypeOf(dependency, toMatchAgainst);
-			//	RequireDependencyReferenceType(toMatchAgainst);
-
-			addToStack(dependency, toMatchAgainst);
-
-			return new InjectFrame(stackLevel++, toMatchAgainst);
-		}
-
-
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="dependency"></param>
-		/// <returns></returns>
-		public static MultiInjectFrame InjectWild<T>(T dependency)
-			//	where T : class
-		{
-			var result = new MultiInjectFrame(
-				stackLevel,
-				addWildcardToStack(dependency, typeof(T)).ToList()
-			);
-
-			stackLevel++;
-			return result;
-		}
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <param name="dependency"></param>
-		/// <returns></returns>
-		public static MultiInjectFrame InjectWild(object dependency)
-		{
-			ThrowIfArgNull(dependency, nameof(dependency));
-			//	RequireDependencyReferenceType(dependency.GetType());
-
-			var result = new MultiInjectFrame(
-				stackLevel,
-				addWildcardToStack(dependency, dependency.GetType()).ToList()
-			);
-
-			stackLevel++;
-			return result;
-		}
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// Injects an object that will be returned for all dependency searches
-		/// for any supertype of <paramref name="toMatchAgainst"/>
-		/// </summary>
-		/// <remarks>
-		/// Currently not that efficient - effectively just calls Inject() for every supertype of toMatchAgainst,
-		/// and returns a DependencyFrame that holds all of these types;
-		/// </remarks>
-		/// <param name="dependency">The depencency to add. May be null (to block existing dependencies from being accessed)</param>
-		/// <param name="toMatchAgainst"></param>
-		/// <returns></returns>
-		public static MultiInjectFrame InjectWild(object dependency, Type toMatchAgainst)
-		{
-			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
-			RequireDependencySubtypeOf(dependency, toMatchAgainst);
-			//	RequireDependencyReferenceType(toMatchAgainst);
-
-			var result = new MultiInjectFrame(
-				stackLevel,
-				addWildcardToStack(dependency, toMatchAgainst).ToList()
-			);
-
-			stackLevel++;
-			return result;
-		}
-
-
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <param name="dependencies"></param>
-		/// <returns></returns>
-		public static MultiInjectFrame InjectSimultaneous(IEnumerable<KeyValuePair<Type, object>> dependencies)
-			=> InjectSimultaneous(dependencies.Select(d => (dependency: d.Key, toMatchAgainst: d.Value, isWildCard: false)));
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <param name="dependencies"></param>
-		/// <returns></returns>
-		public static MultiInjectFrame InjectSimultaneousWild(IEnumerable<KeyValuePair<Type, object>> dependencies)
-			=> InjectSimultaneous(dependencies.Select(d => (dependency: d.Key, toMatchAgainst: d.Value, isWildCard: true)));
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <param name="dependencies"></param>
-		/// <returns></returns>
-		public static MultiInjectFrame InjectSimultaneous(
-			IEnumerable<(Type toMatchAgainst, object dependency, bool isWildcard)> dependencies
-		) {
-			if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
-
-			int i = 0;
-			foreach (var d in dependencies)
-			{
-				if (d.toMatchAgainst == null) throw new ArgumentException(
-					$"Dependency at index '{i}' in array has null type."
-				);
-				RequireDependencySubtypeOf(
-					d.dependency,
-					d.toMatchAgainst,
-					$"dependency at index {i}"
-				);
-				//	RequireDependencyReferenceType(
-				//		d.toMatchAgainst,
-				//		$"dependency at index {i}"
-				//	);
-
-				i++;
-			}
-
-			var result = new MultiInjectFrame(stackLevel, addAllToStack().ToList());
-			stackLevel++;
-			return result;
-
-			IEnumerable<Type> addAllToStack()
-			{
-				foreach (var d in dependencies)
-				{
-					if (d.isWildcard) {
-						foreach (Type t in addWildcardToStack(d.dependency, d.toMatchAgainst)) yield return t;
-					} else {
-						addToStack(d.dependency, d.toMatchAgainst);
-						yield return d.toMatchAgainst;
-					}
-				}
-			}
-		}
-
-
-
-		private static InjectionBuilder injectFirst(object dependency, Type toMatchAgainst, bool isWildcard)
-			=> new InjectionBuilder(
-				(toMatchAgainst, dependency, isWildcard: false),
-				prev: null
-			);
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="dependency"></param>
-		/// <returns></returns>
-		public static InjectionBuilder InjectFirst<T>(T dependency) // where T : class
-			=> injectFirst(dependency, typeof(T), isWildcard: false);
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="dependency"></param>
-		/// <returns></returns>
-		public static InjectionBuilder InjectFirstWild<T>(T dependency) // where T : class
-			=> injectFirst(dependency, typeof(T), isWildcard: true);
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <param name="dependency"></param>
-		/// <param name="toMatchAgainst"></param>
-		/// <returns></returns>
-		public static InjectionBuilder InjectFirst(object dependency, Type toMatchAgainst) {
-			RequireDependencySubtypeOf(dependency, toMatchAgainst);
-			//	RequireDependencyReferenceType(toMatchAgainst);
-
-			return injectFirst(dependency, toMatchAgainst, isWildcard: false);
-		}
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <param name="dependency"></param>
-		/// <param name="toMatchAgainst"></param>
-		/// <returns></returns>
-		public static InjectionBuilder InjectFirstWild(object dependency, Type toMatchAgainst) {
-			RequireDependencySubtypeOf(dependency, toMatchAgainst);
-			//	RequireDependencyReferenceType(toMatchAgainst);
-
-			return injectFirst(dependency, toMatchAgainst, isWildcard: true);
-		}
 
 
 		/// <summary>
@@ -399,10 +349,10 @@ namespace SimpleDI
 				$"as it is different to the current stack level '{stackLevel}'."
 			);
 
-			uninjectDependency(frame.type, frame.stackLevel);
+			uninjectDependency_internal(frame.type, frame.stackLevel);
 		}
 
-		internal static void CloseFrame(MultiInjectFrame frame)
+		internal static void CloseFrame(SimultaneousInjectFrame frame)
 		{
 			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
 				$"Cannot close frame with stack level '{frame.stackLevel}' " +
@@ -411,11 +361,11 @@ namespace SimpleDI
 
 			foreach (Type t in frame.types)
 			{
-				uninjectDependency(t, frame.stackLevel);
+				uninjectDependency_internal(t, frame.stackLevel);
 			}
 		}
 
-		private static void uninjectDependency(Type type, int frameStackLevel)
+		private static void uninjectDependency_internal(Type type, int frameStackLevel)
 		{
 			if (!_dependencyStacks.TryGetValue(type, out var stack)) throw new InjectFrameCloseException(
 				$"No dependency stack for type '{type}' is available."
@@ -440,7 +390,7 @@ namespace SimpleDI
 		{
 			if (frame.IsCleanupFree) return;
 
-			closeFetchedDependency(frame.dependency, frame.prevFetchStackLevel);
+			closeFetchedDependency_internal(frame.dependency, frame.prevFetchStackLevel);
 		}
 
 		internal static void CloseFetchFrame(MultiFetchFrame frame)
@@ -449,11 +399,11 @@ namespace SimpleDI
 
 			foreach ((object dependency, int prevFetchStackLevel) in frame.dependencies)
 			{
-				closeFetchedDependency(dependency, prevFetchStackLevel);
+				closeFetchedDependency_internal(dependency, prevFetchStackLevel);
 			}
 		}
 
-		private static void closeFetchedDependency(object dependency, int prevFetchStackLevel)
+		private static void closeFetchedDependency_internal(object dependency, int prevFetchStackLevel)
 		{
 			if (prevFetchStackLevel == FetchFrame.NoPrevious)
 			{
@@ -491,89 +441,7 @@ namespace SimpleDI
 		//		);
 		//	}
 
-		public class InjectionBuilder : IEnumerable<(Type, object, bool isWildcard)>
-		{
-			private (Type, object, bool isWildcard) toInject;
-			private InjectionBuilder prev;
 
-			internal InjectionBuilder((Type, object, bool isWildcard) toInject, InjectionBuilder prev = null) {
-				this.prev = prev;
-				this.toInject = toInject;
-			}
-
-			private InjectionBuilder then(object dependency, Type toMatchAgainst, bool isWildcard) => new InjectionBuilder(
-				(toMatchAgainst, dependency, isWildcard),
-				prev: this
-			);
-
-			/// <summary>
-			/// <see langword="[Call inside using()]"></see>
-			/// 
-			/// </summary>
-			/// <typeparam name="T"></typeparam>
-			/// <param name="dependency"></param>
-			/// <returns></returns>
-			public InjectionBuilder Then<T>(T dependency) // where T : class
-				=> then(dependency, typeof(T), isWildcard: false);
-
-			/// <summary>
-			/// <see langword="[Call inside using()]"></see>
-			/// 
-			/// </summary>
-			/// <typeparam name="T"></typeparam>
-			/// <param name="dependency"></param>
-			/// <returns></returns>
-			public InjectionBuilder ThenWild<T>(T dependency) // where T : class
-				=> then(dependency, typeof(T), isWildcard: true);
-
-			/// <summary>
-			/// <see langword="[Call inside using()]"></see>
-			/// 
-			/// </summary>
-			/// <param name="dependency"></param>
-			/// <param name="toMatchAgainst"></param>
-			/// <returns></returns>
-			public InjectionBuilder Then(object dependency, Type toMatchAgainst)
-			{
-				RequireDependencySubtypeOf(dependency, toMatchAgainst);
-				//	RequireDependencyReferenceType(toMatchAgainst);
-
-				return then(dependency, toMatchAgainst, isWildcard: false);
-			}
-
-			/// <summary>
-			/// <see langword="[Call inside using()]"></see>
-			/// 
-			/// </summary>
-			/// <param name="dependency"></param>
-			/// <param name="toMatchAgainst"></param>
-			/// <returns></returns>
-			public InjectionBuilder ThenWild(object dependency, Type toMatchAgainst)
-			{
-				RequireDependencySubtypeOf(dependency, toMatchAgainst);
-				//	RequireDependencyReferenceType(toMatchAgainst);
-
-				return then(dependency, toMatchAgainst, isWildcard: true);
-			}
-
-			/// <summary>
-			/// <see langword="[Call inside using()]"></see>
-			/// 
-			/// </summary>
-			/// <returns></returns>
-			public MultiInjectFrame Inject() => InjectSimultaneous(this);
-
-			IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-			public IEnumerator<(Type, object, bool isWildcard)> GetEnumerator()
-			{
-				InjectionBuilder ib = this;
-				while (ib != null)
-				{
-					yield return ib.toInject;
-					ib = ib.prev;
-				}
-			}
-		}
 
 		private class RefEqualityComparer : IEqualityComparer<object>
 		{

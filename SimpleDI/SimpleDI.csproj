@@ -61,7 +61,7 @@
   <ItemGroup>
     <Compile Include="Dependencies.cs" />
     <Compile Include="FetchFrame.cs" />
-    <Compile Include="MultiInjectFrame.cs" />
+    <Compile Include="SimultaneousInjectFrame.cs" />
     <Compile Include="InjectFrame.cs" />
     <Compile Include="InjectFrameCloseException.cs" />
     <Compile Include="DependencyNotFoundException.cs" />

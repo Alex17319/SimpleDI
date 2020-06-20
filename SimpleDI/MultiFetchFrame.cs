@@ -25,9 +25,9 @@ namespace SimpleDI
 
 		private bool _disposed;
 
-		internal MultiFetchFrame(ImmutableStack<(object dependency, int prevFetchStackLevel)> dependencies)
+		private MultiFetchFrame(ImmutableStack<(object dependency, int prevFetchStackLevel)> dependencies)
 		{
-			this.dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
+			this.dependencies = dependencies; // ?? throw new ArgumentNullException(nameof(dependencies));
 			this._disposed = false;
 		}
 
@@ -60,6 +60,24 @@ namespace SimpleDI
 		{
 			if (_disposed || IsCleanupFree) return;
 			_disposed = true;
+
+			var a = new List<(object d, Type t)>();
+			using (a.Aggregate(Dependencies.BeginSimultaneousInject(), (soFar, x) => soFar.Alongside(x.d, x.t)))
+			{
+
+			}
+
+			// Interface/syntax test:
+			//	using (Dependencies.InjectWild(new List<int>()).Alongside(5).Alongside(new Exception()))
+			//	{
+			//		using (Dependencies.Get(out List<int> l).And(out int i))
+			//		{
+			//			using (Dependencies.GetOuterDependency(l, out Exception e))
+			//			{
+			//	
+			//			}
+			//		}
+			//	}
 
 			Dependencies.CloseFetchFrame(this);
 		}
