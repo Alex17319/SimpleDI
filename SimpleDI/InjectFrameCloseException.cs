@@ -13,12 +13,12 @@ using System.Threading.Tasks;
 namespace SimpleDI
 {
 	[Serializable]
-	public class DependencyFrameCloseException : Exception
+	public class InjectFrameCloseException : InvalidDIStateException
 	{
-		public DependencyFrameCloseException() { }
-		public DependencyFrameCloseException(string message) : base(message) { }
-		public DependencyFrameCloseException(string message, Exception inner) : base(message, inner) { }
-		protected DependencyFrameCloseException(
+		public InjectFrameCloseException() { }
+		public InjectFrameCloseException(string message) : base(message) { }
+		public InjectFrameCloseException(string message, Exception inner) : base(message, inner) { }
+		protected InjectFrameCloseException(
 		  System.Runtime.Serialization.SerializationInfo info,
 		  System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
 	}

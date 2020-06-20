@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace SimpleDI
 {
-	public struct DependencyFrame : IDisposable
+	public struct InjectFrame : IDisposable
 	{
 		internal readonly int stackLevel;
 		internal readonly IList<Type> types;
@@ -21,7 +21,7 @@ namespace SimpleDI
 
 		private bool _disposed;
 
-		internal DependencyFrame(int stackLevel, IList<Type> types)
+		internal InjectFrame(int stackLevel, IList<Type> types)
 		{
 			if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), "Cannot be negative.");
 
