@@ -33,11 +33,33 @@ namespace SimpleDI
 		[ThreadStatic]
 		private static int stackLevel;
 
+
+
 		private static void addToStack(object dependency, Type toMatchAgainst)
 		{
 			var toPush = new StackedDependency(stackLevel, dependency);
-			if (_dependencyStacks.TryGetValue(toMatchAgainst, out var stack)) stack.Push(toPush);
-			else {
+
+			if (_dependencyStacks.TryGetValue(toMatchAgainst, out var stack))
+			{
+				if (stack.Peek().stackLevel == stackLevel) throw new InvalidOperationException(
+					$"Cannot inject dependency against type '{toMatchAgainst.FullName}' " +
+					$"as there is already a dependency present against the same type at the current stack level " +
+					$"(stack level = '{stackLevel}'). Most likely cause: calling a method to inject multiple " +
+					$"dependencies at the same time (i.e. at the same stack level), but requesting to add two or " +
+					$"more dependencies against the same type, or more than one wildcard dependency. This would " +
+					$"result in an ambiguity for what object should be returned when the dependencies are fetched " +
+					$"(in the case of wildcards, attempting to fetch a dependency against type 'object' or any other " +
+					$"common parent type would cause this ambiguity). Instead, this is disallowed. Consider " +
+					$"injecting the dependencies one at a time so that they have a defined priority order. " +
+					$"Otherwise, if you do need multiple of the same dependency type T to be fetched as a group, " +
+					$"consider using Inject() and Get() with a T[], List<T>, or some other collection. If you need " +
+					$"inner code to both Get() the group and Get() just the first element (for example) then inject" +
+					$"e.g. both the List<T> and the instance of T."
+				);
+				stack.Push(toPush);
+			}
+			else
+			{
 				_dependencyStacks.Add(toMatchAgainst, new SearchableStack<StackedDependency> { toPush });
 			}
 		}
@@ -60,6 +82,15 @@ namespace SimpleDI
 			}
 		}
 
+
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
 		public static InjectFrame Inject<T>(T dependency)
 			//	where T : class
 		{
@@ -68,6 +99,13 @@ namespace SimpleDI
 			return new InjectFrame(stackLevel++, typeof(T));
 		}
 
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <param name="dependency"></param>
+		/// <param name="toMatchAgainst"></param>
+		/// <returns></returns>
 		public static InjectFrame Inject(object dependency, Type toMatchAgainst)
 		{
 			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
@@ -81,6 +119,13 @@ namespace SimpleDI
 
 
 
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
 		public static MultiInjectFrame InjectWild<T>(T dependency)
 			//	where T : class
 		{
@@ -93,6 +138,12 @@ namespace SimpleDI
 			return result;
 		}
 
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
 		public static MultiInjectFrame InjectWild(object dependency)
 		{
 			ThrowIfArgNull(dependency, nameof(dependency));
@@ -108,6 +159,7 @@ namespace SimpleDI
 		}
 
 		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
 		/// Injects an object that will be returned for all dependency searches
 		/// for any supertype of <paramref name="toMatchAgainst"/>
 		/// </summary>
@@ -135,13 +187,31 @@ namespace SimpleDI
 
 
 
-		public static MultiInjectFrame InjectAll(IEnumerable<KeyValuePair<Type, object>> dependencies)
-			=> InjectAll(dependencies.Select(d => (dependency: d.Key, toMatchAgainst: d.Value, isWildCard: false)));
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <param name="dependencies"></param>
+		/// <returns></returns>
+		public static MultiInjectFrame InjectSimultaneous(IEnumerable<KeyValuePair<Type, object>> dependencies)
+			=> InjectSimultaneous(dependencies.Select(d => (dependency: d.Key, toMatchAgainst: d.Value, isWildCard: false)));
 
-		public static MultiInjectFrame InjectAllWild(IEnumerable<KeyValuePair<Type, object>> dependencies)
-			=> InjectAll(dependencies.Select(d => (dependency: d.Key, toMatchAgainst: d.Value, isWildCard: true)));
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <param name="dependencies"></param>
+		/// <returns></returns>
+		public static MultiInjectFrame InjectSimultaneousWild(IEnumerable<KeyValuePair<Type, object>> dependencies)
+			=> InjectSimultaneous(dependencies.Select(d => (dependency: d.Key, toMatchAgainst: d.Value, isWildCard: true)));
 
-		public static MultiInjectFrame InjectAll(
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <param name="dependencies"></param>
+		/// <returns></returns>
+		public static MultiInjectFrame InjectSimultaneous(
 			IEnumerable<(Type toMatchAgainst, object dependency, bool isWildcard)> dependencies
 		) {
 			if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
@@ -191,12 +261,33 @@ namespace SimpleDI
 				prev: null
 			);
 
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
 		public static InjectionBuilder InjectFirst<T>(T dependency) // where T : class
 			=> injectFirst(dependency, typeof(T), isWildcard: false);
 
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
 		public static InjectionBuilder InjectFirstWild<T>(T dependency) // where T : class
 			=> injectFirst(dependency, typeof(T), isWildcard: true);
 
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <param name="dependency"></param>
+		/// <param name="toMatchAgainst"></param>
+		/// <returns></returns>
 		public static InjectionBuilder InjectFirst(object dependency, Type toMatchAgainst) {
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
 			//	RequireDependencyReferenceType(toMatchAgainst);
@@ -204,6 +295,13 @@ namespace SimpleDI
 			return injectFirst(dependency, toMatchAgainst, isWildcard: false);
 		}
 
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <param name="dependency"></param>
+		/// <param name="toMatchAgainst"></param>
+		/// <returns></returns>
 		public static InjectionBuilder InjectFirstWild(object dependency, Type toMatchAgainst) {
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
 			//	RequireDependencyReferenceType(toMatchAgainst);
@@ -212,7 +310,13 @@ namespace SimpleDI
 		}
 
 
-
+		/// <summary>
+		///	<see langword="[Call inside using()]"></see>
+		///	
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
 		public static FetchFrame Get<T>(out T dependency)
 			// where T : class
 		{
@@ -239,9 +343,12 @@ namespace SimpleDI
 			);
 		}
 
+
+
 		/// <summary>
-		/// Once a dependency has been retrieved with a search for type TSelf, it may call this method
-		/// to find dependencies there were in place at the time it was originally injected.
+		///	<see langword="[Call inside using()]"></see>
+		/// Once a dependency has been retrieved, it may call this method to find
+		/// dependencies that were in place when it was originally injected.
 		/// </summary>
 		/// <remarks>
 		/// If the same depencency object has been injected multiple times, the most recent injection will be used.
@@ -249,16 +356,16 @@ namespace SimpleDI
 		/// Only reference-type dependencies may make use of this method, as reference-equality is used
 		/// to perform the lookup.
 		/// </remarks>
-		/// <typeparam name="TSelf">The type that was used when fetching the current dependency object</typeparam>
 		/// <typeparam name="TOuter">The type of outer dependency to fetch now</typeparam>
 		/// <param name="self"></param>
 		/// <param name="outer"></param>
 		/// <returns></returns>
-		public static FetchFrame GetOuterDependency<TSelf, TOuter>(TSelf self, out TOuter outerDependency)
-			where TSelf : class
+		public static FetchFrame GetOuterDependency<TOuter>(object self, out TOuter outerDependency)
 		{
+			if (self == null) throw new ArgumentNullException(nameof(self));
+
 			if (!_fetchRecord.TryGetValue(self, out int originalStackLevel)) throw new ArgumentException(
-				$"No record is available of a dependency fetch having been performed for type '{typeof(TSelf).FullName}'. " +
+				$"No record is available of a dependency fetch having been performed for type '{self.GetType().FullName}'. " +
 				"Depending on how this occurred (incorrect call or invalid state), continued oepration may be undefined."
 			);
 
@@ -399,12 +506,33 @@ namespace SimpleDI
 				prev: this
 			);
 
+			/// <summary>
+			/// <see langword="[Call inside using()]"></see>
+			/// 
+			/// </summary>
+			/// <typeparam name="T"></typeparam>
+			/// <param name="dependency"></param>
+			/// <returns></returns>
 			public InjectionBuilder Then<T>(T dependency) // where T : class
 				=> then(dependency, typeof(T), isWildcard: false);
 
+			/// <summary>
+			/// <see langword="[Call inside using()]"></see>
+			/// 
+			/// </summary>
+			/// <typeparam name="T"></typeparam>
+			/// <param name="dependency"></param>
+			/// <returns></returns>
 			public InjectionBuilder ThenWild<T>(T dependency) // where T : class
 				=> then(dependency, typeof(T), isWildcard: true);
 
+			/// <summary>
+			/// <see langword="[Call inside using()]"></see>
+			/// 
+			/// </summary>
+			/// <param name="dependency"></param>
+			/// <param name="toMatchAgainst"></param>
+			/// <returns></returns>
 			public InjectionBuilder Then(object dependency, Type toMatchAgainst)
 			{
 				RequireDependencySubtypeOf(dependency, toMatchAgainst);
@@ -413,6 +541,13 @@ namespace SimpleDI
 				return then(dependency, toMatchAgainst, isWildcard: false);
 			}
 
+			/// <summary>
+			/// <see langword="[Call inside using()]"></see>
+			/// 
+			/// </summary>
+			/// <param name="dependency"></param>
+			/// <param name="toMatchAgainst"></param>
+			/// <returns></returns>
 			public InjectionBuilder ThenWild(object dependency, Type toMatchAgainst)
 			{
 				RequireDependencySubtypeOf(dependency, toMatchAgainst);
@@ -421,7 +556,12 @@ namespace SimpleDI
 				return then(dependency, toMatchAgainst, isWildcard: true);
 			}
 
-			public MultiInjectFrame Inject() => InjectAll(this);
+			/// <summary>
+			/// <see langword="[Call inside using()]"></see>
+			/// 
+			/// </summary>
+			/// <returns></returns>
+			public MultiInjectFrame Inject() => InjectSimultaneous(this);
 
 			IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 			public IEnumerator<(Type, object, bool isWildcard)> GetEnumerator()

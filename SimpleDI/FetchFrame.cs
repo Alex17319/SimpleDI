@@ -33,7 +33,18 @@ namespace SimpleDI
 			this.prevFetchStackLevel = prevFetchStackLevel;
 			this._disposed = false;
 		}
-	
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// Fluent inteface to fetch another dependency - calls <seealso cref="Dependencies.Get{T}(out T)"/>
+		/// and returns a frame that encompasses the combined result
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
+		public MultiFetchFrame And<T>(out T dependency)
+			=> MultiFetchFrame.From(this).And(out dependency);
+
 		public void Dispose()
 		{
 			if (_disposed || IsCleanupFree) return;
