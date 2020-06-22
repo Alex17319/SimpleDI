@@ -325,7 +325,8 @@ namespace SimpleDI
 		{
 			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
 				$"Cannot close frame with stack level '{frame.stackLevel}' " +
-				$"as it is different to the current stack level '{stackLevel}'."
+				$"as it is different to the current stack level '{stackLevel}'.",
+				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
 			uninjectDependency_internal(frame.type, frame.stackLevel);
@@ -335,7 +336,8 @@ namespace SimpleDI
 		{
 			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
 				$"Cannot close frame with stack level '{frame.stackLevel}' " +
-				$"as it is different to the current stack level '{stackLevel}'."
+				$"as it is different to the current stack level '{stackLevel}'.",
+				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
 			foreach (Type t in frame.types)
@@ -347,17 +349,20 @@ namespace SimpleDI
 		private static void uninjectDependency_internal(Type type, int frameStackLevel)
 		{
 			if (!_dependencyStacks.TryGetValue(type, out var stack)) throw new InjectFrameCloseException(
-				$"No dependency stack for type '{type}' is available."
+				$"No dependency stack for type '{type}' is available.",
+				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
 			if (stack.Count == 0) throw new InjectFrameCloseException(
-				$"No dependency stack frames for type '{type}' are available."
+				$"No dependency stack frames for type '{type}' are available.",
+				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
 			StackedDependency toRemove = stack.Peek();
 			if (toRemove.stackLevel != frameStackLevel) throw new InjectFrameCloseException(
 				$"Top element of stack for type '{type}' has stack level '{toRemove.stackLevel}' " +
-				$"but frame to be closed has a different stack level: '{frameStackLevel}'."
+				$"but frame to be closed has a different stack level: '{frameStackLevel}'.",
+				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
 			stack.Pop();
@@ -396,10 +401,14 @@ namespace SimpleDI
 
 			FetchFrameCloseException noEntryPresentException() => new FetchFrameCloseException(
 				$"No entry in fetch record available to remove for object '{dependency}' " +
-				$"(with reference hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(dependency)}')."
+				$"(with reference hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(dependency)}').",
+				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 		}
 
+
+		public static SafeDisposeExceptionsRegion SafeDisposeExceptions()
+			=> DisposeExceptionsManager.SafeDisposeExceptions();
 
 
 		private static T ThrowIfArgNull<T>(T arg, string argName)

@@ -17,6 +17,10 @@ namespace SimpleDI
 	/// If the SimpleDI framework works properly and is used correctly, this should never be thrown.
 	/// <para/>
 	/// If this is thrown, the SimpleDI framework is in an invalid state, and all future behaviour is undefined.
+	/// <para/>
+	/// If throwing this (or any other) exception from inside a Dispose() method or finally statement
+	/// (and not also inside a catch statement), you should pass the result of
+	/// <see cref="DisposeExceptionsManager.WrapLastExceptionThrown()"/> as an inner exception.
 	/// </remarks>
 	[Serializable]
 	public class InvalidDIStateException : Exception
