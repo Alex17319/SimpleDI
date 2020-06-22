@@ -247,20 +247,95 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
+		/// <exception cref="DependencyNotFoundException">
+		/// No dependency against type <typeparamref name="T"/> is available.
+		/// </exception>
 		public static FetchFrame Get<T>(out T dependency)
 		{
-			if (!_dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {
-				throw new DependencyNotFoundException(typeof(T));
-			}
+			FetchFrame result = TryGet(out dependency, out bool found);
+			if (!found) throw new DependencyNotFoundException(typeof(T));
+			return result;
+		}
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
+		public static FetchFrame GetOrNull<T>(out T dependency)
+			where T : class
+		{
+			FetchFrame result = TryGet(out dependency, out bool found);
+			if (!found) dependency = null;
+			return result;
+		}
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// Fetches a dependency of type T (not nullable), and returns it (or else null) via a nullable T? parameter.
+		/// <para/>
+		/// See <see cref="TryGet{T}(out T, out bool)"/>
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
+		public static FetchFrame GetOrNull<T>(out T? dependency)
+			where T : struct
+		{
+			FetchFrame result = TryGet(out T dep, out bool found);
+			dependency = found ? dep : (T?)null;
+			return result;
+		}
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// Fetches a dependency of type T? (nullable), and returns it (or else null) via a nullable T? parameter
+		/// <para/>
+		/// See <see cref="TryGet{T}(out T, out bool)"/>
+		/// </summary>
+		/// <remarks>
+		/// Note that null nullable instances (eg new int?()) are boxed to true null pointers (and then treated
+		/// as blocking the visibility of dependencies further out) - so searching for TOuter? doesn't introduce
+		/// two different types of null values or anything.
+		/// </remarks>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
+		public static FetchFrame GetNullableOrNull<T>(out T? dependency)
+			where T : struct
+		{
+			FetchFrame result = TryGet(out dependency, out bool found);
+			if (!found) dependency = null;
+			return result;
+		}
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <param name="found"></param>
+		/// <returns></returns>
+		public static FetchFrame TryGet<T>(out T dependency, out bool found)
+		{
+			if (!_dependencyStacks.TryGetValue(typeof(T), out var stack)) return fail(out dependency, out found);
+
+			if (stack.Count == 0) return fail(out dependency, out found);
 
 			var dInfo = stack.Peek();
-
 			dependency = (T)dInfo.dependency;
 
-			if (typeof(T).IsValueType) return default;
+			// Fail if a null has been added to hide earlier dependencies
+			if (dependency == null) return fail(out dependency, out found);
+			found = true;
 
-			// If the dependency is a reference-type, then need to add to _fetchRecord so that the
-			// dependency can look up what dependencies were available when it was originally injected
+			if (typeof(T).IsValueType) return FetchFrame.CleanupFree;
+
+			// If the dependency is a reference-type (and was found), then need to add to _fetchRecord so
+			// that the dependency can look up what dependencies were available when it was originally injected
 			// If this dependency object instance has been fetched before, need to copy out the current
 			// entry in _fetchRecord so that it can be restored later.
 			bool alreadyFetched = _fetchRecord.TryGetValue(dInfo.dependency, out int prevFetchStackLevel);
@@ -270,9 +345,63 @@ namespace SimpleDI
 				dInfo.dependency,
 				alreadyFetched ? prevFetchStackLevel : FetchFrame.NoPrevious
 			);
+
+			FetchFrame fail(out T d, out bool f) {
+				f = false;
+				d = default;
+				return FetchFrame.CleanupFree;
+			}
 		}
 
 
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// Fetches an outer dependency, or throws a <see cref="DependencyNotFoundException"/> if it could not be found.
+		/// <para/>
+		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool)"/>.
+		/// </summary>
+		/// <typeparam name="TOuter"></typeparam>
+		/// <param name="self"></param>
+		/// <param name="outerDependency"></param>
+		/// <returns></returns>
+		/// <exception cref="DependencyNotFoundException">
+		/// No dependency against type <typeparamref name="TOuter"/> was available when <paramref name="self"/> was injected
+		/// </exception>
+		/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
+		/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
+		/// <exception cref="ArgumentException">
+		/// There is no record of <paramref name="self"/> having been fetched previously
+		/// </exception>
+		public static FetchFrame GetOuter<TOuter>(object self, out TOuter outerDependency)
+		{
+			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found);
+			if (!found) throw new DependencyNotFoundException(typeof(TOuter));
+			return result;
+		}
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// Fetches an outer dependency, or returns null if it could not be found.
+		/// <para/>
+		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool)"/>.
+		/// </summary>
+		/// <typeparam name="TOuter"></typeparam>
+		/// <param name="self"></param>
+		/// <param name="outerDependency"></param>
+		/// <returns></returns>
+		/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
+		/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
+		/// <exception cref="ArgumentException">
+		/// There is no record of <paramref name="self"/> having been fetched previously
+		/// </exception>
+		public static FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter outerDependency)
+			where TOuter : class
+		{
+			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found);
+			if (!found) outerDependency = null;
+			return result;
+		}
 
 		/// <summary>
 		///	<see langword="[Call inside using()]"></see>
@@ -280,43 +409,66 @@ namespace SimpleDI
 		/// dependencies that were in place when it was originally injected.
 		/// </summary>
 		/// <remarks>
-		/// If the same depencency object has been injected multiple times, the most recent injection will be used.
+		/// If the same depencency object has been injected multiple times,
+		/// the most recently fetched injection will be used.
 		/// <para/>
 		/// Only reference-type dependencies may make use of this method, as reference-equality is used
 		/// to perform the lookup.
 		/// </remarks>
-		/// <typeparam name="TOuter">The type of outer dependency to fetch now</typeparam>
+		/// <typeparam name="TOuter">The type of outer dependency to fetch</typeparam>
 		/// <param name="self"></param>
-		/// <param name="outer"></param>
+		/// <param name="outerDependency"></param>
+		/// <param name="found"></param>
 		/// <returns></returns>
-		public static FetchFrame GetOuterDependency<TOuter>(object self, out TOuter outerDependency)
+		/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
+		/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
+		/// <exception cref="ArgumentException">
+		/// There is no record of <paramref name="self"/> having been fetched previously
+		/// </exception>
+		public static FetchFrame TryGetOuter<TOuter>(object self, out TOuter outerDependency, out bool found)
 		{
 			if (self == null) throw new ArgumentNullException(nameof(self));
 
+			if (self.GetType().IsValueType) throw new ArgumentTypeException(
+				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
+				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
+				nameof(self)
+			);
+
 			if (!_fetchRecord.TryGetValue(self, out int originalStackLevel)) throw new ArgumentException(
-				$"No record is available of a dependency fetch having been performed for type '{self.GetType().FullName}'. " +
-				"Depending on how this occurred (incorrect call or invalid state), continued oepration may be undefined."
+				$"No record is available of a dependency fetch having been performed for object '{self}' " +
+				$"(of type '{self.GetType().FullName}'). " +
+				$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
 			);
 
 			if (!_dependencyStacks.TryGetValue(typeof(TOuter), out var stack) || stack.Count == 0) {
-				throw new DependencyNotFoundException(typeof(TOuter));
+				return fail(out outerDependency, out found);
 			}
 
 			int pos = stack.BinarySearch(new StackedDependency(originalStackLevel, null), new StackSearchComparer());
 
-			StackedDependency found;
-			if (pos >= 0) found = stack[pos];
+			StackedDependency outerInfo;
+			if (pos >= 0) outerInfo = stack[pos];
 			else {
 				int posOfLater = ~pos; // position of dependency added for TOuter with the next higher stack level
 				int posOfEarlier = posOfLater - 1; // position of dependency added for TOuter with the next lower stack level
 
-				if (posOfEarlier < 0) throw new DependencyNotFoundException(typeof(TOuter));
-				else found = stack[posOfEarlier];
+				if (posOfEarlier < 0) return fail(out outerDependency, out found);
+				else outerInfo = stack[posOfEarlier];
 			}
 
-			outerDependency = (TOuter)found.dependency;
+			outerDependency = (TOuter)outerInfo.dependency;
 
-			return new FetchFrame(found.dependency, found.stackLevel);
+			if (outerDependency == null) return fail(out outerDependency, out found);
+			found = true;
+
+			return new FetchFrame(outerInfo.dependency, outerInfo.stackLevel);
+
+			FetchFrame fail(out TOuter od, out bool f) {
+				f = false;
+				od = default;
+				return FetchFrame.CleanupFree;
+			}
 		}
 
 
@@ -411,17 +563,17 @@ namespace SimpleDI
 			=> DisposeExceptionsManager.SafeDisposeExceptions();
 
 
+
 		//	private static T ThrowIfArgNull<T>(T arg, string argName)
 		//		=> arg == null ? throw new ArgumentNullException(argName) : arg;
 
 		private static void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
 		{
-			if (dependency != null && !type.IsInstanceOfType(dependency)) throw new ArgumentException(
+			if (dependency != null && !type.IsInstanceOfType(dependency)) throw new ArgumentTypeException(
 				$"Cannot add {dependencyMoniker} as object is of type '{dependency.GetType().FullName}' " +
 				$"and is not an instance of provided match type {type.FullName}."
 			);
 		}
-
 
 
 		private class RefEqualityComparer : IEqualityComparer<object>

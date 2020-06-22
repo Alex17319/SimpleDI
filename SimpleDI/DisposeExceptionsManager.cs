@@ -52,7 +52,7 @@ namespace SimpleDI
 				"here. However, if no exception was propagating, the exception shown here would be an exception " +
 				"already caught & handled earlier, and so the one here may have no relevance to the current exception.",
 				_lastException
-			);
+			); //TODO: Handle when _lastException is null
 
 
 		private static void beginSafeDisposeExEnvironment()
