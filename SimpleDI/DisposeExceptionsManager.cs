@@ -95,7 +95,7 @@ namespace SimpleDI
 			// try catch blocks to undo the beginSafeDisposeExEnvironment() and currentRegionLevel++
 			// lines if something goes wrong (before rethrowing the exception). This way seems much cleaner.
 
-			beginSafeDisposeExEnvironment();
+			if (currentRegionLevel == SafeDisposeExceptionsRegion.RegionLevel_NoneOpen) beginSafeDisposeExEnvironment();
 
 			currentRegionLevel++;
 
