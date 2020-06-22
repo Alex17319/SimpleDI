@@ -31,13 +31,14 @@ namespace SimpleDI
 		public static bool InSafeDisposeExceptionsEnvironment
 			=> currentRegionLevel >= SafeDisposeExceptionsRegion.RegionLevel_OneOpen;
 
-		/// <summary>
-		/// TODO: WARNINGS
-		/// </summary>
-		public static Exception LastExceptionThrown
-			=> InSafeDisposeExceptionsEnvironment ? _lastException : throw new InvalidOperationException(
-				$"Not currently in safe dispose exceptions environment. Please check {InSafeDisposeExceptionsEnvironment} first."
-			);
+		// Not all that safe & no clear use case
+		//	/// <summary>
+		//	/// TODO: WARNINGS
+		//	/// </summary>
+		//	public static Exception LastExceptionThrown
+		//		=> InSafeDisposeExceptionsEnvironment ? _lastException : throw new InvalidOperationException(
+		//			$"Not currently in safe dispose exceptions environment. Please check {InSafeDisposeExceptionsEnvironment} first."
+		//		);
 
 
 		/// <summary>

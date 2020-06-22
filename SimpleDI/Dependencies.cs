@@ -411,8 +411,8 @@ namespace SimpleDI
 			=> DisposeExceptionsManager.SafeDisposeExceptions();
 
 
-		private static T ThrowIfArgNull<T>(T arg, string argName)
-			=> arg == null ? throw new ArgumentNullException(argName) : arg;
+		//	private static T ThrowIfArgNull<T>(T arg, string argName)
+		//		=> arg == null ? throw new ArgumentNullException(argName) : arg;
 
 		private static void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
 		{
