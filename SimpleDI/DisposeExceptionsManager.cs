@@ -17,14 +17,12 @@ namespace SimpleDI
 	{
 		private static int currentRegionLevel = SafeDisposeExceptionsRegion.RegionLevel_NoneOpen;
 
-
 		private static long currentRegionID = SafeDisposeExceptionsRegion.MinValidRegionID;
 		private static long nextNewRegionID = currentRegionID + 1;
 
 
-		// public static event SDERDisposeErrorEvent TooFewOpenRegions;
-		// public static event SDERDisposeErrorEvent TooManyOpenRegions;
-		public static event SDERDisposeErrorEvent RegionCloseIDMismatch;
+
+		public static event SDERDisposeErrorEvent RegionCloseError;
 
 
 
@@ -134,33 +132,15 @@ namespace SimpleDI
 			// message doesn't get printed (maybe there's both no console and no debugger log) then all the
 			// dependencies used by various code could be silently screwed up.
 
-			//	if (numRegionsEntered == 0) {
-			//		// Expecting something to clean up, but there's nothing
-			//		if (NoOpenRegionsWarning == null) {
-			//			printErrorMessage(makeNoRegionsEnteredMessage(region, numRegionsEntered));
-			//		} else {
-			//			NoOpenRegionsWarning.Invoke(null, new SDERDisposeErrorEventArgs(region, numRegionsEntered));
-			//		}
-			//		return;
-			//	}
-
-			// int expectedCurrentRegions = region.regionLevel + 1;
-			// if (currentRegionLevel == expectedCurrentRegions - 1)
-			// {
-			// 	// We were expecting to close region N, but we would end up closing region N - 1,
-			// 	// meaning region N has already been closed. This assumes no erroneous closing
-			// 	// has already occurred.
-			// }
-			// 
-			// 
-			// region.regionLevel
-
-			// Do all checking for errors and printing of errors.
+			// Do all checking for errors, invoking of handler methods, and printing of errors.
 			// After this, we just have to worry about whether any cleanup is needed,
 			// and how to restore things to a state that makes the most sense.
 			if (region.ID != currentRegionID)
 			{
-				printErrorMessage(getRegionCloseIDMismatchMsg(region, currentRegionID, currentRegionLevel));
+				if (RegionCloseError == null)
+					printErrorMessage(getRegionCloseIDMismatchMsg(region, currentRegionID, currentRegionLevel));
+				else
+					RegionCloseError(null, new SDERDisposeErrorEventArgs(region, currentRegionLevel, currentRegionID));
 			}
 
 
@@ -209,7 +189,7 @@ namespace SimpleDI
 				$"region-to-exit: {region}" +
 				System.Environment.NewLine +
 				$"To run some code when this warning occurs, subscribe to " +
-				$"{nameof(SimpleDI)}.{nameof(DisposeExceptionsManager)}.{nameof(RegionCloseIDMismatch)}. " +
+				$"{nameof(SimpleDI)}.{nameof(DisposeExceptionsManager)}.{nameof(RegionCloseError)}. " +
 				$"Subscribing to that event will suppress this message (use an empty handler to just suppress it). " +
 				$"{nameof(SimpleDI)}.{nameof(DisposeExceptionsManager)}.{nameof(getRegionCloseIDMismatchMsg)} " +
 				$"may be used to generate this message again after any handling of the warning, " +
@@ -218,54 +198,7 @@ namespace SimpleDI
 			);
 		}
 
-		//	public static string getTooFewOpenRegionsMessage(SafeDisposeExceptionsRegion region, int curRegionNum)
-		//		=> getUnexpectedSituationErrorMessage(
-		//			region,
-		//			curRegionNum,
-		//			nameof(TooFewOpenRegions),
-		//			nameof(getTooFewOpenRegionsMessage),
-		//			$"Attempted to exit region number '{region.level}' but " + (
-		//				curRegionNum == -1
-		//				? $"no regions are in progress"
-		//				: $"the currently open region is region number '{curRegionNum}'"
-		//			) + $". " +
-		//			$"An outer region, or the current region to exit, may have already been closed. "
-		//		);
-		//	
-		//	public static string getTooManyOpenRegionsMessage(SafeDisposeExceptionsRegion region, int curRegionNum)
-		//		=> getUnexpectedSituationErrorMessage(
-		//			region,
-		//			curRegionNum,
-		//			nameof(TooManyOpenRegions),
-		//			nameof(getTooManyOpenRegionsMessage),
-		//			$"Attempted to exit region number '{region.level}' " +
-		//			$"but additional regions up to region number '{curRegionNum}' are in progress. " +
-		//			$"Some inner regions may not have been properly closed. " +
-		//			$"These regions will be closed now, along with the current region, and then execution should continue. " +
-		//			$"However, beyond this point, . " +
-		//		);
-		//	
-		//	private static string getUnexpectedSituationErrorMessage(
-		//		SafeDisposeExceptionsRegion region,
-		//		int currentNumRegionsEntered,
-		//		string eventName,
-		//		string msgMethodName,
-		//		string situation
-		//	) {
-		//		return (
-		//			$"Warning: Unexpected situation when exiting {nameof(SafeDisposeExceptionsRegion)}: " +
-		//			situation +
-		//			$"Region to exit = {region}, current {nameof(currentRegionLevel)} = {currentNumRegionsEntered}. " +
-		//			$"To run some code when this error occurs, subscribe to " +
-		//			$"{nameof(SimpleDI)}.{nameof(DisposeExceptionsManager)}.{eventName}. " +
-		//			$"Subscribing to that event will suppress this message (use an empty handler to just suppress it). " +
-		//			$"{nameof(SimpleDI)}.{nameof(DisposeExceptionsManager)}.{msgMethodName} may be used to generate this " +
-		//			$"message again after any handling of the error, " +
-		//			$"and {nameof(SimpleDI)}.{nameof(DisposeExceptionsManager)}.{nameof(printErrorMessage)} " +
-		//			$"may be used to print it."
-		//			//TODO: future messages not guaranteed
-		//		);
-		//	}
+
 
 		/// <summary>
 		/// Used to print error messages when no error event handler is available,
@@ -280,17 +213,21 @@ namespace SimpleDI
 			Debug.WriteLine(message);
 		}
 
+
+
 		public delegate void SDERDisposeErrorEvent(object sender, SDERDisposeErrorEventArgs e);
 
 		public class SDERDisposeErrorEventArgs : EventArgs
 		{
 			public SafeDisposeExceptionsRegion Region { get; }
-			public int CurrentNumRegionsEntered { get; }
+			public int CurrentRegionLevel { get; }
+			public long CurrentRegionID { get; }
 
-			public SDERDisposeErrorEventArgs(SafeDisposeExceptionsRegion region, int currentNumRegionsEntered)
+			public SDERDisposeErrorEventArgs(SafeDisposeExceptionsRegion region, int currentRegionLevel, long currentRegionID)
 			{
 				this.Region = region;
-				this.CurrentNumRegionsEntered = currentNumRegionsEntered;
+				this.CurrentRegionLevel = currentRegionLevel;
+				this.CurrentRegionID = currentRegionID;
 			}
 		}
 	}
