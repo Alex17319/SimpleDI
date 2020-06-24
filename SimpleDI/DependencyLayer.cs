@@ -14,7 +14,7 @@ using SimpleDI.DisposeExceptions;
 
 namespace SimpleDI
 {
-	public partial class DependencyLayer : IDisposable
+	public partial class DependencyLayer
 	{
 		// For future improvement: Maybe try to implement wildcard dependencies more efficiently (wildcard = returned
 		// when any parent class/interface is requested, rather than just when exactly the correct type is requested).
@@ -66,7 +66,7 @@ namespace SimpleDI
 			);
 		}
 
-		public void Dispose()
+		private void Dispose()
 		{
 			if (_disposed) return;
 			_disposed = true;
@@ -79,6 +79,30 @@ namespace SimpleDI
 			_disposed = true;
 		}
 
+		internal Disposer GetDisposer()
+		{
+			return new Disposer(this);
+		}
+
+		// Used to prevent people from randomly calling Dependencies.CurrentLayer.Dispose()
+		// Instead of DependencyLayer implementing IDisposable, this struct implements it,
+		// and passes on the call to DependencyLayer. External code can't make a proper
+		// instance of this struct in order to call Dispose() (except via reflection)
+		public struct Disposer : IDisposable
+		{
+			public readonly DependencyLayer Layer;
+
+			public bool IsNull => Layer == null;
+			public static readonly Disposer Null = default;
+
+			internal Disposer(DependencyLayer layer) {
+				this.Layer = layer;
+			}
+
+			public void Dispose() {
+				this.Layer.Dispose();
+			}
+		}
 
 		private class RefEqualityComparer : IEqualityComparer<object>
 		{
