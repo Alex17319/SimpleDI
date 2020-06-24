@@ -26,16 +26,13 @@ namespace SimpleDI
 		// Each stack is always sorted in descending order by stackLevel (often with gaps), and may be
 		// searched through with a binary search (the need for both binary search and stack operations resulted
 		// in the SearchableStack<T> class)
-		[ThreadStatic]
 		private readonly Dictionary<Type, SearchableStack<StackedDependency>> _dependencyStacks
 			= new Dictionary<Type, SearchableStack<StackedDependency>>();
 
 		// Maps from a dependency that has been fetched to the stack level that it was originally injected at
-		[ThreadStatic]
 		private readonly Dictionary<object, FetchRecord> _fetchRecords
 			= new Dictionary<object, FetchRecord>(new RefEqualityComparer());
 
-		[ThreadStatic]
 		private int stackLevel;
 
 		private bool _disposed = false;
