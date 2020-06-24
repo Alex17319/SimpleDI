@@ -672,29 +672,32 @@ namespace SimpleDI
 		{
 			if (frame.IsCleanupFree) return;
 
-			closeFetchedDependency_internal(frame.dependency, frame.prevFetchStackLevel);
+			closeFetchedDependency_internal(frame.dependency, frame.prevFetch);
 		}
 
-		internal void CloseFetchFrame(MultiFetchFrame frame)
+		internal void CloseFetchFrame(MultiFetchFrame multiFrame)
 		{
-			if (frame.IsCleanupFree) return;
+			if (multiFrame.IsCleanupFree) return;
 
-			foreach ((object dependency, int prevFetchStackLevel) in frame.dependencies)
+			foreach (FetchFrame f in multiFrame.frames)
 			{
-				closeFetchedDependency_internal(dependency, prevFetchStackLevel);
+				closeFetchedDependency_internal(f.dependency, f.prevFetch);
 			}
 		}
 
-		private void closeFetchedDependency_internal(object dependency, int prevFetchStackLevel)
+		private void closeFetchedDependency_internal(object dependency, FetchRecord prevFetch)
 		{
-			if (prevFetchStackLevel == FetchFrame.NoPrevious)
+			// Only ever look in/edit current layer (the record is only ever added to the
+			// current layer, as in general we must not modify other layers).
+
+			if (prevFetch.IsNull)
 			{
 				if (!_fetchRecords.Remove(dependency)) throw noEntryPresentException();
 			}
 			else
 			{
 				if (!_fetchRecords.ContainsKey(dependency)) throw noEntryPresentException();
-				_fetchRecords[dependency] = prevFetchStackLevel;
+				_fetchRecords[dependency] = prevFetch;
 			}
 
 			FetchFrameCloseException noEntryPresentException() => new FetchFrameCloseException(
