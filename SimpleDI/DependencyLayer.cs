@@ -26,16 +26,28 @@ namespace SimpleDI
 		// searched through with a binary search (the need for both binary search and stack operations resulted
 		// in the SearchableStack<T> class)
 		[ThreadStatic]
-		private static readonly Dictionary<Type, SearchableStack<StackedDependency>> _dependencyStacks
+		private readonly Dictionary<Type, SearchableStack<StackedDependency>> _dependencyStacks
 			= new Dictionary<Type, SearchableStack<StackedDependency>>();
 
 		// Maps from a dependency that has been fetched to the stack level that it was originally injected at
 		[ThreadStatic]
-		private static readonly Dictionary<object, int> _fetchRecord
-			= new Dictionary<object, int>(new RefEqualityComparer());
+		private readonly Dictionary<object, FetchRecord> _fetchRecords
+			= new Dictionary<object, FetchRecord>(new RefEqualityComparer());
 
 		[ThreadStatic]
-		private static int stackLevel;
+		private int stackLevel;
+
+		/// <summary>
+		/// Fallbacks are used to increase the search space, but will not be modified in any way.
+		/// </summary>
+		public DependencyLayer Fallback { get; }
+
+
+
+		internal DependencyLayer(DependencyLayer fallback)
+		{
+			this.Fallback = fallback;
+		}
 
 
 
@@ -46,7 +58,7 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public static InjectFrame Inject<T>(T dependency)
+		public InjectFrame Inject<T>(T dependency)
 		{
 			addToStack_internal(dependency, typeof(T));
 
@@ -60,7 +72,7 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <param name="toMatchAgainst"></param>
 		/// <returns></returns>
-		public static InjectFrame Inject(object dependency, Type toMatchAgainst)
+		public InjectFrame Inject(object dependency, Type toMatchAgainst)
 		{
 			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
@@ -79,7 +91,7 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public static SimultaneousInjectFrame InjectWild<T>(T dependency)
+		public SimultaneousInjectFrame InjectWild<T>(T dependency)
 			=> injectSimul_internal(ImmutableStack.Create<Type>(), dependency, typeof(T), isWildcard: true);
 
 		/// <summary>
@@ -94,7 +106,7 @@ namespace SimpleDI
 		/// <param name="dependency">The depencency to add. May be null (to block existing dependencies from being accessed)</param>
 		/// <param name="toMatchAgainst"></param>
 		/// <returns></returns>
-		public static SimultaneousInjectFrame InjectWild(object dependency, Type toMatchAgainst)
+		public SimultaneousInjectFrame InjectWild(object dependency, Type toMatchAgainst)
 		{
 			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
@@ -104,14 +116,14 @@ namespace SimpleDI
 
 
 
-		public static SimultaneousInjectFrame BeginSimultaneousInject()
+		public SimultaneousInjectFrame BeginSimultaneousInject()
 		{
 			return new SimultaneousInjectFrame();
 		}
 
 
 
-		internal static SimultaneousInjectFrame AndInjectSimultaneously<T>(
+		internal SimultaneousInjectFrame AndInjectSimultaneously<T>(
 			SimultaneousInjectFrame soFar,
 			T dependency,
 			bool isWildcard
@@ -119,7 +131,7 @@ namespace SimpleDI
 			return andInjectMoreSimultaneously_internal(soFar, dependency, typeof(T), isWildcard);
 		}
 
-		internal static SimultaneousInjectFrame AndInjectSimultaneously(
+		internal SimultaneousInjectFrame AndInjectSimultaneously(
 			SimultaneousInjectFrame soFar,
 			object dependency,
 			Type toMatchAgainst,
@@ -137,7 +149,7 @@ namespace SimpleDI
 
 
 
-		private static SimultaneousInjectFrame andInjectMoreSimultaneously_internal(
+		private SimultaneousInjectFrame andInjectMoreSimultaneously_internal(
 			SimultaneousInjectFrame soFar,
 			object dependency,
 			Type toMatchAgainst,
@@ -167,7 +179,7 @@ namespace SimpleDI
 			return result;
 		}
 
-		private static SimultaneousInjectFrame injectSimul_internal(
+		private SimultaneousInjectFrame injectSimul_internal(
 			ImmutableStack<Type> soFar,
 			object dependency,
 			Type toMatchAgainst,
@@ -195,7 +207,7 @@ namespace SimpleDI
 			return result;
 		}
 
-		private static IEnumerable<Type> addWildcardToStack_internal(object dependency, Type toMatchAgainst)
+		private IEnumerable<Type> addWildcardToStack_internal(object dependency, Type toMatchAgainst)
 		{
 			// Add each successive base class
 			Type t = dependency.GetType();
@@ -213,7 +225,7 @@ namespace SimpleDI
 			}
 		}
 
-		private static void addToStack_internal(object dependency, Type toMatchAgainst)
+		private void addToStack_internal(object dependency, Type toMatchAgainst)
 		{
 			var toPush = new StackedDependency(stackLevel, dependency);
 
@@ -254,9 +266,9 @@ namespace SimpleDI
 		/// <exception cref="DependencyNotFoundException">
 		/// No dependency against type <typeparamref name="T"/> is available.
 		/// </exception>
-		public static FetchFrame Get<T>(out T dependency)
+		public FetchFrame Get<T>(out T dependency, bool useFallbacks)
 		{
-			FetchFrame result = TryGet(out dependency, out bool found);
+			FetchFrame result = TryGet(out dependency, out bool found, useFallbacks);
 			if (!found) throw new DependencyNotFoundException(typeof(T));
 			return result;
 		}
@@ -268,10 +280,10 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public static FetchFrame GetOrNull<T>(out T dependency)
+		public FetchFrame GetOrNull<T>(out T dependency, bool useFallbacks)
 			where T : class
 		{
-			FetchFrame result = TryGet(out dependency, out bool found);
+			FetchFrame result = TryGet(out dependency, out bool found, useFallbacks);
 			if (!found) dependency = null;
 			return result;
 		}
@@ -280,15 +292,15 @@ namespace SimpleDI
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches a dependency of type T (not nullable), and returns it (or else null) via a nullable T? parameter.
 		/// <para/>
-		/// See <see cref="TryGet{T}(out T, out bool)"/>
+		/// See <see cref="TryGet{T}(out T, out bool, bool)"/>
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public static FetchFrame GetOrNull<T>(out T? dependency)
+		public FetchFrame GetOrNull<T>(out T? dependency, bool useFallbacks)
 			where T : struct
 		{
-			FetchFrame result = TryGet(out T dep, out bool found);
+			FetchFrame result = TryGet(out T dep, out bool found, useFallbacks);
 			dependency = found ? dep : (T?)null;
 			return result;
 		}
@@ -297,7 +309,7 @@ namespace SimpleDI
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches a dependency of type T? (nullable), and returns it (or else null) via a nullable T? parameter
 		/// <para/>
-		/// See <see cref="TryGet{T}(out T, out bool)"/>
+		/// See <see cref="TryGet{T}(out T, out bool, bool)"/>
 		/// </summary>
 		/// <remarks>
 		/// Note that null nullable instances (eg new int?()) are boxed to true null pointers (and then treated
@@ -307,10 +319,10 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public static FetchFrame GetNullableOrNull<T>(out T? dependency)
+		public FetchFrame GetNullableOrNull<T>(out T? dependency, bool useFallbacks)
 			where T : struct
 		{
-			FetchFrame result = TryGet(out dependency, out bool found);
+			FetchFrame result = TryGet(out dependency, out bool found, useFallbacks);
 			if (!found) dependency = null;
 			return result;
 		}
@@ -323,11 +335,12 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <param name="found"></param>
 		/// <returns></returns>
-		public static FetchFrame TryGet<T>(out T dependency, out bool found)
+		public FetchFrame TryGet<T>(out T dependency, out bool found, bool useFallbacks)
 		{
-			if (!_dependencyStacks.TryGetValue(typeof(T), out var stack)) return fail(out dependency, out found);
-
-			if (stack.Count == 0) return fail(out dependency, out found);
+			if (!this.tryGetFromDependencyStacks(typeof(T), out var stack, useFallbacks, out var layerFoundIn)) {
+				// No stack found, or all found stacks were empty
+				return fail(out dependency, out found);
+			}
 
 			var dInfo = stack.Peek();
 			dependency = (T)dInfo.dependency;
@@ -338,17 +351,12 @@ namespace SimpleDI
 
 			if (typeof(T).IsValueType) return FetchFrame.CleanupFree;
 
-			// If the dependency is a reference-type (and was found), then need to add to _fetchRecord so
-			// that the dependency can look up what dependencies were available when it was originally injected
-			// If this dependency object instance has been fetched before, need to copy out the current
-			// entry in _fetchRecord so that it can be restored later.
-			bool alreadyFetched = _fetchRecord.TryGetValue(dInfo.dependency, out int prevFetchStackLevel);
+			// If the dependency is a reference-type (and was found), then need to add to _fetchRecords so that the
+			// dependency can look up what dependencies were available when it was originally injected.
+			// Must only add to/modify the current layer's records (as we must only modify the current layer in general).
+			this.addToFetchRecord(dInfo.dependency, layerFoundIn, dInfo.stackLevel, out var prevFetch);
 
-			_fetchRecord[dInfo.dependency] = dInfo.stackLevel;
-			return new FetchFrame(
-				dInfo.dependency,
-				alreadyFetched ? prevFetchStackLevel : FetchFrame.NoPrevious
-			);
+			return new FetchFrame(dInfo.dependency, prevFetch);
 
 			FetchFrame fail(out T d, out bool f) {
 				f = false;
@@ -357,13 +365,117 @@ namespace SimpleDI
 			}
 		}
 
+		private void addToFetchRecord(
+			object dependency,
+			DependencyLayer layerFoundIn,
+			int stackLevelFoundAt,
+			out FetchRecord prevFetch
+		) {
+			// If this dependency object instance has been fetched before, need to copy out the current
+			// entry in _fetchRecords (passed out via prevFetch) so that it can be restored later.
+			// We must only modify _fetchRecords of the current layer, just as we must only modify the current
+			// layer in general - so only need to look in the current layer for a previous fetch to replace.
+
+			bool alreadyFetched = _fetchRecords.TryGetValue(dependency, out prevFetch);
+
+			_fetchRecords[dependency] = new FetchRecord(layerFoundIn, stackLevelFoundAt);
+		}
+
+
+
+		//	/// <summary>
+		//	///	<see langword="[Call inside using()]"></see>
+		//	///	
+		//	/// </summary>
+		//	/// <typeparam name="T"></typeparam>
+		//	/// <param name="dependency"></param>
+		//	/// <returns></returns>
+		//	/// <exception cref="DependencyNotFoundException">
+		//	/// No dependency against type <typeparamref name="T"/> is available.
+		//	/// </exception>
+		//	public FetchFrame Get<T>(out T dependency)
+		//	{
+		//		FetchFrame result = TryGet(out dependency, out bool found);
+		//		if (!found) throw new DependencyNotFoundException(typeof(T));
+		//		return result;
+		//	}
+		//	
+		//	/// <summary>
+		//	/// <see langword="[Call inside using()]"></see>
+		//	/// 
+		//	/// </summary>
+		//	/// <typeparam name="T"></typeparam>
+		//	/// <param name="dependency"></param>
+		//	/// <returns></returns>
+		//	public FetchFrame GetOrNull<T>(out T dependency)
+		//		where T : class
+		//	{
+		//		FetchFrame result = TryGet(out dependency, out bool found);
+		//		if (!found) dependency = null;
+		//		return result;
+		//	}
+		//	
+		//	/// <summary>
+		//	/// <see langword="[Call inside using()]"></see>
+		//	/// Fetches a dependency of type T (not nullable), and returns it (or else null) via a nullable T? parameter.
+		//	/// <para/>
+		//	/// See <see cref="TryGet{T}(out T, out bool)"/>
+		//	/// </summary>
+		//	/// <typeparam name="T"></typeparam>
+		//	/// <param name="dependency"></param>
+		//	/// <returns></returns>
+		//	public FetchFrame GetOrNull<T>(out T? dependency)
+		//		where T : struct
+		//	{
+		//		FetchFrame result = TryGet(out T dep, out bool found);
+		//		dependency = found ? dep : (T?)null;
+		//		return result;
+		//	}
+		//	
+		//	/// <summary>
+		//	/// <see langword="[Call inside using()]"></see>
+		//	/// Fetches a dependency of type T? (nullable), and returns it (or else null) via a nullable T? parameter
+		//	/// <para/>
+		//	/// See <see cref="TryGet{T}(out T, out bool)"/>
+		//	/// </summary>
+		//	/// <remarks>
+		//	/// Note that null nullable instances (eg new int?()) are boxed to true null pointers (and then treated
+		//	/// as blocking the visibility of dependencies further out) - so searching for TOuter? doesn't introduce
+		//	/// two different types of null values or anything.
+		//	/// </remarks>
+		//	/// <typeparam name="T"></typeparam>
+		//	/// <param name="dependency"></param>
+		//	/// <returns></returns>
+		//	public FetchFrame GetNullableOrNull<T>(out T? dependency)
+		//		where T : struct
+		//	{
+		//		FetchFrame result = TryGet(out dependency, out bool found);
+		//		if (!found) dependency = null;
+		//		return result;
+		//	}
+		//	
+		//	public FetchFrame TryGet<T>(out T dependency, out bool found)
+		//	{
+		//		var layer = this;
+		//	
+		//		while (layer != null) {
+		//			FetchFrame result = layer.TryGetLocal(out dependency, out found);
+		//			if (found) return result;
+		//	
+		//			layer = layer.Fallback;
+		//		}
+		//	
+		//		dependency = default;
+		//		found = false;
+		//		return FetchFrame.CleanupFree;
+		//	}
 
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches an outer dependency, or throws a <see cref="DependencyNotFoundException"/> if it could not be found.
 		/// <para/>
-		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool)"/>.
+		/// See <see cref="TryGetLocalOuter{TOuter}(object, out TOuter, out bool)"/>.
 		/// </summary>
 		/// <typeparam name="TOuter"></typeparam>
 		/// <param name="self"></param>
@@ -377,9 +489,9 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public static FetchFrame GetOuter<TOuter>(object self, out TOuter outerDependency)
+		public FetchFrame GetLocalOuter<TOuter>(object self, out TOuter outerDependency)
 		{
-			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found);
+			FetchFrame result = TryGetLocalOuter(self, out outerDependency, out bool found);
 			if (!found) throw new DependencyNotFoundException(typeof(TOuter));
 			return result;
 		}
@@ -388,7 +500,7 @@ namespace SimpleDI
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches an outer dependency, or returns null if it could not be found.
 		/// <para/>
-		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool)"/>.
+		/// See <see cref="TryGetLocalOuter{TOuter}(object, out TOuter, out bool)"/>.
 		/// </summary>
 		/// <typeparam name="TOuter"></typeparam>
 		/// <param name="self"></param>
@@ -399,10 +511,10 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public static FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter outerDependency)
+		public FetchFrame GetLocalOuterOrNull<TOuter>(object self, out TOuter outerDependency)
 			where TOuter : class
 		{
-			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found);
+			FetchFrame result = TryGetLocalOuter(self, out outerDependency, out bool found);
 			if (!found) outerDependency = null;
 			return result;
 		}
@@ -429,7 +541,7 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public static FetchFrame TryGetOuter<TOuter>(object self, out TOuter outerDependency, out bool found)
+		public FetchFrame TryGetLocalOuter<TOuter>(object self, out TOuter outerDependency, out bool found)
 		{
 			if (self == null) throw new ArgumentNullException(nameof(self));
 
@@ -439,7 +551,7 @@ namespace SimpleDI
 				nameof(self)
 			);
 
-			if (!_fetchRecord.TryGetValue(self, out int originalStackLevel)) throw new ArgumentException(
+			if (!_fetchRecords.TryGetValue(self, out int originalStackLevel)) throw new ArgumentException(
 				$"No record is available of a dependency fetch having been performed for object '{self}' " +
 				$"(of type '{self.GetType().FullName}'). " +
 				$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
@@ -452,8 +564,11 @@ namespace SimpleDI
 			int pos = stack.BinarySearch(new StackedDependency(originalStackLevel, null), new StackSearchComparer());
 
 			StackedDependency outerInfo;
-			if (pos >= 0) outerInfo = stack[pos];
-			else {
+			if (pos >= 0) {
+				// get previous, not simultaneously inserted, dependency
+				if (pos == 0) return fail(out outerDependency, out found);
+				outerInfo = stack[pos - 1];
+			} else {
 				int posOfLater = ~pos; // position of dependency added for TOuter with the next higher stack level
 				int posOfEarlier = posOfLater - 1; // position of dependency added for TOuter with the next lower stack level
 
@@ -475,9 +590,182 @@ namespace SimpleDI
 			}
 		}
 
+		private FetchFrame TryGetOuter_internal<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
+		{
+			if (self == null) throw new ArgumentNullException(nameof(self));
+
+			if (self.GetType().IsValueType) throw new ArgumentTypeException(
+				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
+				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
+				nameof(self)
+			);
+
+			if (!tryGetFromFetchRecord(self, out FetchRecord mostRecentFetch, useFallbacks, out var layerFetchFoundIn)) {
+				throw new ArgumentException(
+					$"No record is available of a dependency fetch having been performed for object '{self}' " +
+					$"(of type '{self.GetType().FullName}'). " +
+					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
+				);
+			}
+
+			// Use record of previous fetch to:
+			// - Starting from the layer the previous fetch was recorded in (don't search more recent layers),
+			//   find the closest layer that holds dependencies against type TOuter
+			// - At the same time, get the stack of those dependencies.
+			// - Then if that stack is in a different layer to the layer the previous fetch was recorded in,
+			//   take the element at the top of the stack.
+			//   Otherwise, if the layers are the same, do a binary search through the stack to find the entry
+			//   with a lower stackLevel than the previous fetch. I.e. find the last one put onto the stack
+			//   before the previous fetch.
+
+			//TODO Only binary search if same layer
+
+			
+			if (!tryFindMostRecentBeforeFetch(out StackedDependency outerInfo, out DependencyLayer layerOuterFoundIn)) {
+				outerDependency = default;
+				found = false;
+				return FetchFrame.CleanupFree;
+			}
+			
+
+			outerDependency = (TOuter)outerInfo.dependency;
+
+			if (outerDependency == null) {
+				outerDependency = default;
+				found = false;
+				return FetchFrame.CleanupFree;
+			}
+
+			found = true;
+
+			// Now add to the current layer's _fetchRecords that the outer dependency was just fetched
+			this.addToFetchRecord(outerDependency, layerOuterFoundIn, outerInfo.stackLevel, out FetchRecord prevOuterFetch);
+
+			return new FetchFrame(outerInfo.dependency, prevOuterFetch);
+
+			bool tryFindMostRecentBeforeFetch(out StackedDependency mostRecent, out DependencyLayer layerFoundIn)
+			{
+				if (!layerFetchFoundIn.tryGetFromDependencyStacks(typeof(TOuter), out var stack, useFallbacks, out var layerStackFoundIn)) {
+					mostRecent = default;
+					layerFoundIn = null;
+					return false;
+				}
+
+				// We previously found the previous time 'self' was fetched, and got the layer it was in.
+				// Now we've just looked for a stack of dependencies against type TOuter, in that layer or
+				// a fallback layer (if useFallbacks = true).
+				// If the stack was in a different layer, we can just get the top of the stack
+				// (which is also guaranteed to be non-empty).
+				// However, if the stack was in the same layer, then some dependencies might've
+				// been added to it since 'self' was fetched. In that case, we need to do a binary
+				// search through the stack, to find the most recent entry before 'self' was fetched.
+				// If there is no such entry in the stack, then (if useFallbacks = true) we need to
+				// fallback to previous layers (and then just get the top of whatever stack we find).
+
+				// If the layers are different, just get the top of the stack and return
+
+				if (!ReferenceEquals(layerStackFoundIn, layerFetchFoundIn))
+				{
+					mostRecent = stack.Peek();
+					layerFoundIn = layerStackFoundIn;
+					return true;
+				}
+
+				// Otherwise, layers are the same; do a binary search
+
+				int pos = stack.BinarySearch(
+					new StackedDependency(mostRecentFetch.stackLevelFoundAt, null),
+					new StackSearchComparer()
+				);
+
+				// That returns either the position of an exact match, or the bitwise complement
+				// of the position of the next greater element. We need the position of the previous
+				// element (even if it was an exact match - we shouldn't return dependencies that
+				// were injected simultaneously, only ones injected previously). So:
+
+				int prevPos;
+				if (pos >= 0) prevPos = pos - 1;
+				else {
+					int nextPos = ~pos;
+					prevPos = nextPos - 1;
+				}
+
+				// Now, if prevPos >= 0, we've sucessfully found the dependency
+
+				if (pos >= 0)
+				{
+					mostRecent = stack[prevPos];
+					layerFoundIn = layerStackFoundIn;
+					return true;
+				}
+
+				// But otherwise, we need to fall back to previous layers (if we can)
+				
+				if (!useFallbacks || layerStackFoundIn.Fallback == null) {
+					// Not allowed to fall back, or nothing to fall back to
+					mostRecent = default;
+					layerFoundIn = null;
+					return false;
+				}
+
+				if (layerStackFoundIn.Fallback.tryGetFromDependencyStacks(
+					typeof(TOuter),
+					out var fallbackStack,
+					useFallbacks,
+					out var fallbackLayerStackFoundIn
+				)) {
+					mostRecent = fallbackStack.Peek(); // guaranteed non-empty
+					layerFoundIn = fallbackLayerStackFoundIn;
+					return true;
+				} else {
+					mostRecent = default;
+					layerFoundIn = null;
+					return false;
+				}
+			}
+		}
+
+		private bool tryGetFromFetchRecord(object key, out FetchRecord value, bool useFallbacks, out DependencyLayer layerFoundIn)
+		{
+			var layer = this;
+
+			while (layer != null) {
+				if (layer._fetchRecords.TryGetValue(key, out value)) {
+					layerFoundIn = layer;
+					return true;
+				}
+
+				if (useFallbacks) layer = layer.Fallback;
+				else break;
+			}
+
+			value = default;
+			layerFoundIn = null;
+			return false;
+		}
+
+		private bool tryGetFromDependencyStacks(Type key, out SearchableStack<StackedDependency> value, bool useFallbacks, out DependencyLayer layerFoundIn)
+		{
+			var layer = this;
+
+			while (layer != null) {
+				if (layer._dependencyStacks.TryGetValue(key, out value) && value.Count > 0) {
+					layerFoundIn = layer;
+					return true;
+				}
+
+				if (useFallbacks) layer = layer.Fallback;
+				else break;
+			}
+
+			value = default;
+			layerFoundIn = null;
+			return false;
+		}
 
 
-		internal static void CloseFrame(InjectFrame frame)
+
+		internal void CloseFrame(InjectFrame frame)
 		{
 			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
 				$"Cannot close frame with stack level '{frame.stackLevel}' " +
@@ -488,7 +776,7 @@ namespace SimpleDI
 			uninjectDependency_internal(frame.type, frame.stackLevel);
 		}
 
-		internal static void CloseFrame(SimultaneousInjectFrame frame)
+		internal void CloseFrame(SimultaneousInjectFrame frame)
 		{
 			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
 				$"Cannot close frame with stack level '{frame.stackLevel}' " +
@@ -502,7 +790,7 @@ namespace SimpleDI
 			}
 		}
 
-		private static void uninjectDependency_internal(Type type, int frameStackLevel)
+		private void uninjectDependency_internal(Type type, int frameStackLevel)
 		{
 			if (!_dependencyStacks.TryGetValue(type, out var stack)) throw new InjectFrameCloseException(
 				$"No dependency stack for type '{type}' is available.",
@@ -526,14 +814,14 @@ namespace SimpleDI
 
 
 
-		internal static void CloseFetchFrame(FetchFrame frame)
+		internal void CloseFetchFrame(FetchFrame frame)
 		{
 			if (frame.IsCleanupFree) return;
 
 			closeFetchedDependency_internal(frame.dependency, frame.prevFetchStackLevel);
 		}
 
-		internal static void CloseFetchFrame(MultiFetchFrame frame)
+		internal void CloseFetchFrame(MultiFetchFrame frame)
 		{
 			if (frame.IsCleanupFree) return;
 
@@ -543,16 +831,16 @@ namespace SimpleDI
 			}
 		}
 
-		private static void closeFetchedDependency_internal(object dependency, int prevFetchStackLevel)
+		private void closeFetchedDependency_internal(object dependency, int prevFetchStackLevel)
 		{
 			if (prevFetchStackLevel == FetchFrame.NoPrevious)
 			{
-				if (!_fetchRecord.Remove(dependency)) throw noEntryPresentException();
+				if (!_fetchRecords.Remove(dependency)) throw noEntryPresentException();
 			}
 			else
 			{
-				if (!_fetchRecord.ContainsKey(dependency)) throw noEntryPresentException();
-				_fetchRecord[dependency] = prevFetchStackLevel;
+				if (!_fetchRecords.ContainsKey(dependency)) throw noEntryPresentException();
+				_fetchRecords[dependency] = prevFetchStackLevel;
 			}
 
 			FetchFrameCloseException noEntryPresentException() => new FetchFrameCloseException(
@@ -563,7 +851,7 @@ namespace SimpleDI
 		}
 
 
-		public static SafeDisposeExceptionsRegion SafeDisposeExceptions()
+		public SafeDisposeExceptionsRegion SafeDisposeExceptions()
 			=> DisposeExceptionsManager.SafeDisposeExceptions();
 
 
@@ -571,7 +859,7 @@ namespace SimpleDI
 		//	private static T ThrowIfArgNull<T>(T arg, string argName)
 		//		=> arg == null ? throw new ArgumentNullException(argName) : arg;
 
-		private static void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
+		private void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
 		{
 			if (dependency != null && !type.IsInstanceOfType(dependency)) throw new ArgumentTypeException(
 				$"Cannot add {dependencyMoniker} as object is of type '{dependency.GetType().FullName}' " +
@@ -589,6 +877,9 @@ namespace SimpleDI
 			public int GetHashCode(object obj) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
 		}
 
+		/// <summary>
+		/// Compares by stack level only
+		/// </summary>
 		private class StackSearchComparer : IComparer<StackedDependency>
 		{
 			public StackSearchComparer() { }

@@ -18,19 +18,19 @@ namespace SimpleDI
 		private const int CleanupFreeFlag = -2;
 
 		internal readonly object dependency;
-		internal readonly int prevFetchStackLevel;
+		internal readonly FetchRecord prevFetch;
 
-		/// <summary>True when the dependency fetched were value-types, false when any were reference-types.</summary>
-		public bool IsCleanupFree => prevFetchStackLevel == CleanupFreeFlag;
+		/// <summary>True when the dependency fetched was a value-type, false when it was a reference-type.</summary>
+		public bool IsCleanupFree => dependency == null;
 
 		public static readonly FetchFrame CleanupFree = default;
 
 		private bool _disposed;
 
-		internal FetchFrame(object dependency, int prevFetchStackLevel)
+		internal FetchFrame(object dependency, FetchRecord prevFetch)
 		{
 			this.dependency = dependency;
-			this.prevFetchStackLevel = prevFetchStackLevel;
+			this.prevFetch = prevFetch;
 			this._disposed = false;
 		}
 

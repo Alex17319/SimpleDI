@@ -15,26 +15,26 @@ namespace SimpleDI
 {
 	public struct MultiFetchFrame : IDisposable
 	{
-		internal const int NoPrevious = -1;
-
-		internal ImmutableStack<(object dependency, int prevFetchStackLevel)> dependencies;
+		internal ImmutableStack<FetchFrame> dependencies;
+		private readonly bool _needsCleanup;
 
 		/// <summary>True when all dependencies fetched were value-types, false when any were reference-types.</summary>
 		/// <remarks>True if and only if no dependencies are stored.</remarks>
-		public bool IsCleanupFree => dependencies == null;
+		public bool IsCleanupFree => !_needsCleanup;
 
 		private bool _disposed;
 
-		private MultiFetchFrame(ImmutableStack<(object dependency, int prevFetchStackLevel)> dependencies)
+		private MultiFetchFrame(ImmutableStack<FetchFrame> dependencies)
 		{
-			this.dependencies = dependencies; // ?? throw new ArgumentNullException(nameof(dependencies));
+			this.dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
 			this._disposed = false;
+			this._needsCleanup = !dependencies.IsEmpty && dependencies.Any(d => !d.IsCleanupFree);
 		}
 
 		internal static MultiFetchFrame From(FetchFrame f)
 			=> f.IsCleanupFree
 			? new MultiFetchFrame()
-			: new MultiFetchFrame(ImmutableStack.Create((f.dependency, f.prevFetchStackLevel)));
+			: new MultiFetchFrame(ImmutableStack.Create(f));
 
 		private MultiFetchFrame Plus(FetchFrame f)
 			=> this.IsCleanupFree && f.IsCleanupFree
@@ -43,7 +43,7 @@ namespace SimpleDI
 			? From(f)
 			: f.IsCleanupFree
 			? this
-			: new MultiFetchFrame(this.dependencies.Push((f.dependency, f.prevFetchStackLevel)));
+			: new MultiFetchFrame(this.dependencies.Push(f));
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
