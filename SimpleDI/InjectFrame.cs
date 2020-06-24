@@ -85,7 +85,7 @@ namespace SimpleDI
 			if (_disposed || IsNull) return;
 			_disposed = true;
 
-			this.layer.CloseFrame(this);
+			this.layer.CloseInjectFrame(this);
 		}
 	}
 }

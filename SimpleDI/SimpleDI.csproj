@@ -61,6 +61,8 @@
   <ItemGroup>
     <Compile Include="ArgumentTypeException.cs" />
     <Compile Include="Dependencies.cs" />
+    <Compile Include="DependencyLayer.Inject.cs" />
+    <Compile Include="DependencyLayer.Get.cs" />
     <Compile Include="DependencyLayer.cs" />
     <Compile Include="DisposeExceptions\DisposeExceptionsManager.cs" />
     <Compile Include="DisposeExceptions\RegionCloseErrorEventArgs.cs" />
