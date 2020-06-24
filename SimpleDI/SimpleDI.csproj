@@ -59,7 +59,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ArgumentTypeException.cs" />
+    <Compile Include="Utility Classes\ArgumentTypeException.cs" />
     <Compile Include="Dependencies.cs" />
     <Compile Include="DependencyLayer.Inject.cs" />
     <Compile Include="DependencyLayer.Get.cs" />
@@ -69,14 +69,14 @@
     <Compile Include="FetchFrame.cs" />
     <Compile Include="DisposeExceptions\DisposeInnerException.cs" />
     <Compile Include="FetchRecord.cs" />
-    <Compile Include="LayerCloseMismatchEventArgs.cs" />
+    <Compile Include="Utility Classes\LayerCloseMismatchEventArgs.cs" />
     <Compile Include="DisposeExceptions\SafeDisposeExceptionsRegion.cs" />
     <Compile Include="SimultaneousInjectFrame.cs" />
     <Compile Include="InjectFrame.cs" />
-    <Compile Include="InjectFrameCloseException.cs" />
-    <Compile Include="DependencyNotFoundException.cs" />
-    <Compile Include="FetchFrameCloseException.cs" />
-    <Compile Include="InvalidDIStateException.cs" />
+    <Compile Include="Utility Classes\InjectFrameCloseException.cs" />
+    <Compile Include="Utility Classes\DependencyNotFoundException.cs" />
+    <Compile Include="Utility Classes\FetchFrameCloseException.cs" />
+    <Compile Include="Utility Classes\InvalidDIStateException.cs" />
     <Compile Include="MultiFetchFrame.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SearchableStack.cs" />
