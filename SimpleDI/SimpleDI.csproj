@@ -61,6 +61,7 @@
   <ItemGroup>
     <Compile Include="ArgumentTypeException.cs" />
     <Compile Include="Dependencies.cs" />
+    <Compile Include="DependencyLayer.cs" />
     <Compile Include="DisposeExceptionsManager.cs" />
     <Compile Include="FetchFrame.cs" />
     <Compile Include="DisposeInnerException.cs" />
