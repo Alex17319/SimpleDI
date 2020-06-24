@@ -17,6 +17,7 @@ namespace SimpleDI
 		internal const int NoPrevious = -1;
 		private const int CleanupFreeFlag = -2;
 
+		internal readonly DependencyLayer layerSearchingFrom;
 		internal readonly object dependency;
 		internal readonly FetchRecord prevFetch;
 
@@ -27,10 +28,11 @@ namespace SimpleDI
 
 		private bool _disposed;
 
-		internal FetchFrame(object dependency, FetchRecord prevFetch)
+		internal FetchFrame(DependencyLayer layerSearchingFrom, object dependency, FetchRecord prevFetch)
 		{
-			this.dependency = dependency;
-			this.prevFetch = prevFetch;
+			this.layerSearchingFrom = layerSearchingFrom ?? throw new ArgumentNullException(nameof(layerSearchingFrom));
+			this.dependency = dependency ?? throw new ArgumentNullException(nameof(layerSearchingFrom));
+			this.prevFetch = prevFetch; // may have FetchRecord.IsNull true or false
 			this._disposed = false;
 		}
 
@@ -50,7 +52,7 @@ namespace SimpleDI
 			if (_disposed || IsCleanupFree) return;
 			_disposed = true;
 
-			Dependencies.CloseFetchFrame(this);
+			Dependencies.CurrentLayer.CloseFetchFrame(this);
 		}
 	}
 }

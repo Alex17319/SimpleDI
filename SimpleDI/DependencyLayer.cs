@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace SimpleDI
 {
-	public class DependencyLayer
+	public class DependencyLayer : IDisposable
 	{
 		// For future improvement: Maybe try to implement wildcard dependencies more efficiently (wildcard = returned
 		// when any parent class/interface is requested, rather than just when exactly the correct type is requested).
@@ -37,16 +37,22 @@ namespace SimpleDI
 		[ThreadStatic]
 		private int stackLevel;
 
+		private bool _disposed = false;
+
 		/// <summary>
 		/// Fallbacks are used to increase the search space, but will not be modified in any way.
 		/// </summary>
 		public DependencyLayer Fallback { get; }
 
 
+		internal DependencyLayer()
+		{
+			this.Fallback = null;
+		}
 
 		internal DependencyLayer(DependencyLayer fallback)
 		{
-			this.Fallback = fallback;
+			this.Fallback = fallback ?? throw new ArgumentNullException(nameof(fallback));
 		}
 
 
@@ -62,7 +68,7 @@ namespace SimpleDI
 		{
 			addToStack_internal(dependency, typeof(T));
 
-			return new InjectFrame(stackLevel++, typeof(T));
+			return new InjectFrame(this, stackLevel++, typeof(T));
 		}
 
 		/// <summary>
@@ -79,7 +85,7 @@ namespace SimpleDI
 
 			addToStack_internal(dependency, toMatchAgainst);
 
-			return new InjectFrame(stackLevel++, toMatchAgainst);
+			return new InjectFrame(this, stackLevel++, toMatchAgainst);
 		}
 
 
@@ -118,20 +124,20 @@ namespace SimpleDI
 
 		public SimultaneousInjectFrame BeginSimultaneousInject()
 		{
-			return new SimultaneousInjectFrame();
+			return new SimultaneousInjectFrame(layer: this);
 		}
 
 
 
-		internal SimultaneousInjectFrame AndInjectSimultaneously<T>(
+		internal SimultaneousInjectFrame InjectMoreSimultaneously<T>(
 			SimultaneousInjectFrame soFar,
 			T dependency,
 			bool isWildcard
 		) {
-			return andInjectMoreSimultaneously_internal(soFar, dependency, typeof(T), isWildcard);
+			return injectMoreSimultaneously_internal(soFar, dependency, typeof(T), isWildcard);
 		}
 
-		internal SimultaneousInjectFrame AndInjectSimultaneously(
+		internal SimultaneousInjectFrame InjectMoreSimultaneously(
 			SimultaneousInjectFrame soFar,
 			object dependency,
 			Type toMatchAgainst,
@@ -144,12 +150,12 @@ namespace SimpleDI
 			);
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
 
-			return andInjectMoreSimultaneously_internal(soFar, dependency, toMatchAgainst, isWildcard);
+			return injectMoreSimultaneously_internal(soFar, dependency, toMatchAgainst, isWildcard);
 		}
 
 
 
-		private SimultaneousInjectFrame andInjectMoreSimultaneously_internal(
+		private SimultaneousInjectFrame injectMoreSimultaneously_internal(
 			SimultaneousInjectFrame soFar,
 			object dependency,
 			Type toMatchAgainst,
@@ -194,13 +200,13 @@ namespace SimpleDI
 					resStack = resStack.Push(t);
 				}
 
-				result = new SimultaneousInjectFrame(stackLevel, resStack);
+				result = new SimultaneousInjectFrame(layer: this, stackLevel, resStack);
 			}
 			else
 			{
 				addToStack_internal(dependency, toMatchAgainst);
 
-				result = new SimultaneousInjectFrame(stackLevel, soFar.Push(toMatchAgainst));
+				result = new SimultaneousInjectFrame(layer: this, stackLevel, soFar.Push(toMatchAgainst));
 			}
 
 			stackLevel++;
@@ -356,7 +362,7 @@ namespace SimpleDI
 			// Must only add to/modify the current layer's records (as we must only modify the current layer in general).
 			this.addToFetchRecord(dInfo.dependency, layerFoundIn, dInfo.stackLevel, out var prevFetch);
 
-			return new FetchFrame(dInfo.dependency, prevFetch);
+			return new FetchFrame(layerSearchingFrom: this, dInfo.dependency, prevFetch);
 
 			FetchFrame fail(out T d, out bool f) {
 				f = false;
@@ -432,6 +438,57 @@ namespace SimpleDI
 		}
 
 		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// Fetches an outer dependency of type T (not nullable), and returns it (or else null) via a nullable T? parameter.
+		/// <para/>
+		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
+		/// </summary>
+		/// <typeparam name="TOuter"></typeparam>
+		/// <param name="self"></param>
+		/// <param name="outerDependency"></param>
+		/// <returns></returns>
+		/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
+		/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
+		/// <exception cref="ArgumentException">
+		/// There is no record of <paramref name="self"/> having been fetched previously
+		/// </exception>
+		public FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
+			where TOuter : struct
+		{
+			FetchFrame result = TryGetOuter(self, out TOuter oDep, out bool found, useFallbacks);
+			outerDependency = found ? oDep : (TOuter?)null;
+			return result;
+		}
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// Fetches an outer dependency of type T? (nullable), and returns it (or else null) via a nullable T? parameter.
+		/// <para/>
+		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
+		/// </summary>
+		/// <remarks>
+		/// Note that null nullable instances (eg new int?()) are boxed to true null pointers (and then treated
+		/// as blocking the visibility of dependencies further out) - so searching for TOuter? doesn't introduce
+		/// two different types of null values or anything.
+		/// </remarks>
+		/// <typeparam name="TOuter"></typeparam>
+		/// <param name="self"></param>
+		/// <param name="outerDependency"></param>
+		/// <returns></returns>
+		/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
+		/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
+		/// <exception cref="ArgumentException">
+		/// There is no record of <paramref name="self"/> having been fetched previously
+		/// </exception>
+		public FetchFrame GetOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
+			where TOuter : struct
+		{
+			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found, useFallbacks);
+			if (!found) outerDependency = null;
+			return result;
+		}
+
+		/// <summary>
 		///	<see langword="[Call inside using()]"></see>
 		/// Once a dependency has been retrieved, it may call this method to find
 		/// dependencies that were in place when it was originally injected.
@@ -490,7 +547,7 @@ namespace SimpleDI
 			// Now add to the current layer's _fetchRecords that the outer dependency was just fetched
 			this.addToFetchRecord(outerDependency, layerOuterFoundIn, outerInfo.stackLevel, out FetchRecord prevOuterFetch);
 
-			return new FetchFrame(outerInfo.dependency, prevOuterFetch);
+			return new FetchFrame(layerSearchingFrom: this, outerInfo.dependency, prevOuterFetch);
 
 			bool tryFindMostRecentBeforeFetch(out StackedDependency mostRecent, out DependencyLayer layerFoundIn)
 			{
@@ -621,8 +678,13 @@ namespace SimpleDI
 
 		internal void CloseFrame(InjectFrame frame)
 		{
+			if (frame.layer != this) throw new InjectFrameCloseException(
+				$"Cannot close inject frame as it does not belong to the current dependency layer " +
+				$"(current layer = '{this}', {nameof(frame)}.{nameof(InjectFrame.layer)} = '{frame.layer}')"
+			);
+
 			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
-				$"Cannot close frame with stack level '{frame.stackLevel}' " +
+				$"Cannot close inject frame with stack level '{frame.stackLevel}' " +
 				$"as it is different to the current stack level '{stackLevel}'.",
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
@@ -632,6 +694,11 @@ namespace SimpleDI
 
 		internal void CloseFrame(SimultaneousInjectFrame frame)
 		{
+			if (frame.layer != this) throw new InjectFrameCloseException(
+				$"Cannot close inject frame as it does not belong to the current dependency layer " +
+				$"(current layer = '{this}', {nameof(frame)}.{nameof(InjectFrame.layer)} = '{frame.layer}')"
+			);
+
 			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
 				$"Cannot close frame with stack level '{frame.stackLevel}' " +
 				$"as it is different to the current stack level '{stackLevel}'.",
@@ -708,20 +775,29 @@ namespace SimpleDI
 		}
 
 
-		public SafeDisposeExceptionsRegion SafeDisposeExceptions()
-			=> DisposeExceptionsManager.SafeDisposeExceptions();
-
-
 
 		//	private static T ThrowIfArgNull<T>(T arg, string argName)
 		//		=> arg == null ? throw new ArgumentNullException(argName) : arg;
 
-		private void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
+		private static void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
 		{
 			if (dependency != null && !type.IsInstanceOfType(dependency)) throw new ArgumentTypeException(
 				$"Cannot add {dependencyMoniker} as object is of type '{dependency.GetType().FullName}' " +
 				$"and is not an instance of provided match type {type.FullName}."
 			);
+		}
+
+		public void Dispose()
+		{
+			if (_disposed) return;
+			_disposed = true;
+
+			Dependencies.CloseLayer(this);
+		}
+
+		internal void MarkDisposed()
+		{
+			_disposed = true;
 		}
 
 

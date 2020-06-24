@@ -15,15 +15,26 @@ namespace SimpleDI
 {
 	public struct SimultaneousInjectFrame : IDisposable
 	{
+		internal readonly DependencyLayer layer;
 		internal readonly int stackLevel;
 		internal readonly ImmutableStack<Type> types;
 
 		public bool IsEmpty => this.types == null;
+		public static readonly SimultaneousInjectFrame Empty = default;
 
 		private bool _disposed;
 
-		internal SimultaneousInjectFrame(int stackLevel, ImmutableStack<Type> types)
+		internal SimultaneousInjectFrame(DependencyLayer layer)
 		{
+			this.layer = layer ?? throw new ArgumentNullException(nameof(layer));
+			this.stackLevel = default;
+			this.types = null;
+			this._disposed = false;
+		}
+
+		internal SimultaneousInjectFrame(DependencyLayer layer, int stackLevel, ImmutableStack<Type> types)
+		{
+			if (layer == null) throw new ArgumentNullException(nameof(layer));
 			if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), "Cannot be negative.");
 			if (types == null) throw new ArgumentNullException(nameof(types));
 
@@ -33,10 +44,19 @@ namespace SimpleDI
 				i++;
 			}
 
+			this.layer = layer;
 			this.stackLevel = stackLevel;
 			this.types = types;
 			this._disposed = false;
 		}
+
+		private SimultaneousInjectFrame ensureHasLayer()
+			=> this.layer != null
+			? this
+			: throw new InvalidOperationException(
+				$"Current {nameof(SimultaneousInjectFrame)} has {nameof(layer)} == null, that is, " +
+				$"it is not associated with any {nameof(DependencyLayer)} in order to perform more simultaneous injections."
+			);
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
@@ -46,7 +66,9 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <returns></returns>
 		public SimultaneousInjectFrame Alongside<T>(T dependency)
-			=> Dependencies.AndInjectSimultaneously(soFar: this, dependency, isWildcard: false);
+			=> this.ensureHasLayer()
+			.layer
+			.InjectMoreSimultaneously(soFar: this, dependency, isWildcard: false);
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
@@ -56,7 +78,9 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <returns></returns>
 		public SimultaneousInjectFrame AlongsideWild<T>(T dependency)
-			=> Dependencies.AndInjectSimultaneously(soFar: this, dependency, isWildcard: true);
+			=> this.ensureHasLayer()
+			.layer
+			.InjectMoreSimultaneously(soFar: this, dependency, isWildcard: true);
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
@@ -66,7 +90,9 @@ namespace SimpleDI
 		/// <param name="toMatchAgainst"></param>
 		/// <returns></returns>
 		public SimultaneousInjectFrame Alongside(object dependency, Type toMatchAgainst)
-			=> Dependencies.AndInjectSimultaneously(soFar: this, dependency, isWildcard: false);
+			=> this.ensureHasLayer()
+			.layer
+			.InjectMoreSimultaneously(soFar: this, dependency, toMatchAgainst, isWildcard: false);
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
@@ -76,14 +102,16 @@ namespace SimpleDI
 		/// <param name="toMatchAgainst"></param>
 		/// <returns></returns>
 		public SimultaneousInjectFrame AlongsideWild(object dependency, Type toMatchAgainst)
-			=> Dependencies.AndInjectSimultaneously(soFar: this, dependency, isWildcard: true);
+			=> this.ensureHasLayer()
+			.layer
+			.InjectMoreSimultaneously(soFar: this, dependency, toMatchAgainst, isWildcard: true);
 
 		public void Dispose()
 		{
 			if (_disposed || IsEmpty) return;
 			_disposed = true;
 
-			Dependencies.CloseFrame(this);
+			this.layer.CloseFrame(this);
 		}
 	}
 }

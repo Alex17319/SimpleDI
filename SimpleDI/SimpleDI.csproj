@@ -66,6 +66,7 @@
     <Compile Include="FetchFrame.cs" />
     <Compile Include="DisposeInnerException.cs" />
     <Compile Include="FetchRecord.cs" />
+    <Compile Include="LayerCloseMismatchEvent.cs" />
     <Compile Include="SafeDisposeExceptionsRegion.cs" />
     <Compile Include="SimultaneousInjectFrame.cs" />
     <Compile Include="InjectFrame.cs" />
