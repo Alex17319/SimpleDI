@@ -12,14 +12,12 @@ using System.Threading.Tasks;
 
 namespace SimpleDI
 {
-	public delegate void LayerCloseMismatchEvent(object sender, LayerCloseMismatchEventArgs e);
-
-	public class LayerCloseMismatchEventArgs : EventArgs
+	public class LayerCloseErrorEventArgs : EventArgs
 	{
 		public DependencyLayer CurrentLayer { get; }
 		public DependencyLayer LayerToClose { get; }
 
-		public LayerCloseMismatchEventArgs(DependencyLayer currentLayer, DependencyLayer layerToClose)
+		public LayerCloseErrorEventArgs(DependencyLayer currentLayer, DependencyLayer layerToClose)
 		{
 			this.CurrentLayer = currentLayer;
 			this.LayerToClose = layerToClose;

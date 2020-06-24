@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SimpleDI.DisposeExceptions;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -15,7 +16,7 @@ namespace SimpleDI
 		private static DependencyLayer _currentLayer = new DependencyLayer();
 		public static DependencyLayer CurrentLayer => _currentLayer;
 
-		public static event LayerCloseMismatchEvent LayerCloseMismatch;
+		public static event EventHandler<LayerCloseErrorEventArgs> LayerCloseMismatch;
 
 
 
@@ -30,7 +31,7 @@ namespace SimpleDI
 		internal static void CloseLayer(DependencyLayer layer)
 		{
 			if (layer != CurrentLayer) {
-				LayerCloseMismatch?.Invoke(null, new LayerCloseMismatchEventArgs(CurrentLayer, layer));
+				LayerCloseMismatch?.Invoke(null, new LayerCloseErrorEventArgs(CurrentLayer, layer));
 			}
 
 			if (layer.Fallback == null) {

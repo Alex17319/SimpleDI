@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SimpleDI
+namespace SimpleDI.DisposeExceptions
 {
 	public static class DisposeExceptionsManager
 	{
@@ -22,7 +22,7 @@ namespace SimpleDI
 
 
 
-		public static event SDERDisposeErrorEvent RegionCloseError;
+		public static event EventHandler<RegionCloseErrorEventArgs> RegionCloseError;
 
 
 
@@ -141,7 +141,7 @@ namespace SimpleDI
 				if (RegionCloseError == null)
 					printErrorMessage(getRegionCloseIDMismatchMsg(region, currentRegionID, currentRegionLevel));
 				else
-					RegionCloseError(null, new SDERDisposeErrorEventArgs(region, currentRegionLevel, currentRegionID));
+					RegionCloseError(null, new RegionCloseErrorEventArgs(region, currentRegionLevel, currentRegionID));
 			}
 
 
@@ -212,24 +212,6 @@ namespace SimpleDI
 		{
 			Console.WriteLine(message);
 			Debug.WriteLine(message);
-		}
-
-
-
-		public delegate void SDERDisposeErrorEvent(object sender, SDERDisposeErrorEventArgs e);
-
-		public class SDERDisposeErrorEventArgs : EventArgs
-		{
-			public SafeDisposeExceptionsRegion Region { get; }
-			public int CurrentRegionLevel { get; }
-			public long CurrentRegionID { get; }
-
-			public SDERDisposeErrorEventArgs(SafeDisposeExceptionsRegion region, int currentRegionLevel, long currentRegionID)
-			{
-				this.Region = region;
-				this.CurrentRegionLevel = currentRegionLevel;
-				this.CurrentRegionID = currentRegionID;
-			}
 		}
 	}
 }
