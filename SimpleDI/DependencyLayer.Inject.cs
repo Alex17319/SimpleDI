@@ -14,7 +14,7 @@ using SimpleDI.DisposeExceptions;
 
 namespace SimpleDI
 {
-	public partial class DependencyLayer
+	public partial class MutatingDependencyLayer
 	{
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>

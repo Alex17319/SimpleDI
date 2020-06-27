@@ -13,7 +13,7 @@ namespace SimpleDI
 	public static class Dependencies
 	{
 		[ThreadStatic]
-		private static IDependencyLayer _currentLayer = new DependencyLayer();
+		private static IDependencyLayer _currentLayer = new MutatingDependencyLayer();
 		public static IDependencyLayer CurrentLayer => _currentLayer;
 
 		public static event EventHandler<LayerCloseErrorEventArgs> LayerCloseMismatch;
@@ -25,7 +25,7 @@ namespace SimpleDI
 
 		public static IDisposableLayer NewLayer()
 		{
-			_currentLayer = new DependencyLayer(fallback: CurrentLayer);
+			_currentLayer = new MutatingDependencyLayer(fallback: CurrentLayer);
 			return ((_DependencyLayerInternal)_currentLayer).AsDisposable();
 		}
 
@@ -52,7 +52,7 @@ namespace SimpleDI
 				// layer without adding it, or used to modify the fallback of a layer.
 				// Someones done that, throw an exception
 				throw new InvalidDIStateException(
-					$"{nameof(DependencyLayer)} '{layer}' was never opened.",
+					$"{nameof(MutatingDependencyLayer)} '{layer}' was never opened.",
 					DisposeExceptionsManager.WrapLastExceptionThrown()
 				);
 			}

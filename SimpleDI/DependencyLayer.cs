@@ -14,7 +14,7 @@ using SimpleDI.DisposeExceptions;
 
 namespace SimpleDI
 {
-	public partial class DependencyLayer : _DependencyLayerInternal, IDependencyLayer
+	public partial class MutatingDependencyLayer : _DependencyLayerInternal, IDependencyLayer
 	{
 		// For future improvement: Maybe try to implement wildcard dependencies more efficiently (wildcard = returned
 		// when any parent class/interface is requested, rather than just when exactly the correct type is requested).
@@ -43,12 +43,12 @@ namespace SimpleDI
 		public IDependencyLayer Fallback { get; }
 
 
-		internal DependencyLayer()
+		internal MutatingDependencyLayer()
 		{
 			this.Fallback = null;
 		}
 
-		internal DependencyLayer(IDependencyLayer fallback)
+		internal MutatingDependencyLayer(IDependencyLayer fallback)
 		{
 			this.Fallback = fallback ?? throw new ArgumentNullException(nameof(fallback));
 		}
@@ -87,12 +87,12 @@ namespace SimpleDI
 		// instance of this class in order to call Dispose() (except via reflection)
 		private class Disposer : IDisposableLayer
 		{
-			public DependencyLayer Layer { get; }
+			public MutatingDependencyLayer Layer { get; }
 
 			public bool IsNull => Layer == null;
 			public static readonly Disposer Null = default;
 
-			internal Disposer(DependencyLayer layer) {
+			internal Disposer(MutatingDependencyLayer layer) {
 				this.Layer = layer;
 			}
 

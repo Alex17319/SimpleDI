@@ -55,7 +55,7 @@ namespace SimpleDI
 			? this
 			: throw new InvalidOperationException(
 				$"Current {nameof(SimultaneousInjectFrame)} has {nameof(layer)} == null, that is, " +
-				$"it is not associated with any {nameof(DependencyLayer)} in order to perform more simultaneous injections."
+				$"it is not associated with any {nameof(MutatingDependencyLayer)} in order to perform more simultaneous injections."
 			);
 
 		/// <summary>
