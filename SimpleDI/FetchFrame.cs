@@ -52,7 +52,7 @@ namespace SimpleDI
 			if (_disposed || IsCleanupFree) return;
 			_disposed = true;
 
-			Dependencies.CurrentLayer.CloseFetchFrame(this);
+			layerSearchingFrom.CloseFetchFrame(this);
 		}
 	}
 }
