@@ -14,13 +14,13 @@ namespace SimpleDI
 {
 	internal struct FetchRecord
 	{
-		internal readonly DependencyLayer layerFoundAt;
+		internal readonly IDependencyLayer layerFoundAt;
 		internal readonly int stackLevelFoundAt;
 
 		internal bool IsNull => layerFoundAt == null;
 		internal readonly static FetchRecord Null = default;
 
-		internal FetchRecord(DependencyLayer layerFoundAt, int stackLevelFoundAt)
+		internal FetchRecord(IDependencyLayer layerFoundAt, int stackLevelFoundAt)
 		{
 			this.layerFoundAt = layerFoundAt ?? throw new ArgumentNullException(nameof(layerFoundAt));
 			this.stackLevelFoundAt = stackLevelFoundAt;

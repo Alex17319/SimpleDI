@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using SimpleDI.DisposeExceptions;
+using SimpleDI.TryGet;
 
 namespace SimpleDI
 {
@@ -97,16 +98,16 @@ namespace SimpleDI
 		/// <returns></returns>
 		public FetchFrame TryGet<T>(out T dependency, out bool found, bool useFallbacks)
 		{
-			if (!this.tryGetFromDependencyStacks(typeof(T), out var stack, useFallbacks, out var layerFoundIn)) {
-				// No stack found, or all found stacks were empty
-				return fail(out dependency, out found);
+			if (!((_DependencyLayerInternal)this).StealthTryGet(
+				out dependency,
+				out int stackLevel,
+				useFallbacks,
+				out var layerFoundIn)
+			) {
+				found = false;
+				return FetchFrame.CleanupFree;
 			}
 
-			var dInfo = stack.Peek();
-			dependency = (T)dInfo.dependency;
-
-			// Fail if a null has been added to hide earlier dependencies
-			if (dependency == null) return fail(out dependency, out found);
 			found = true;
 
 			if (typeof(T).IsValueType) return FetchFrame.CleanupFree;
@@ -114,15 +115,35 @@ namespace SimpleDI
 			// If the dependency is a reference-type (and was found), then need to add to _fetchRecords so that the
 			// dependency can look up what dependencies were available when it was originally injected.
 			// Must only add to/modify the current layer's records (as we must only modify the current layer in general).
-			this.addToFetchRecord(dInfo.dependency, layerFoundIn, dInfo.stackLevel, out var prevFetch);
+			this.addToFetchRecord(dependency, layerFoundIn, stackLevel, out var prevFetch);
 
-			return new FetchFrame(layerSearchingFrom: this, dInfo.dependency, prevFetch);
+			return new FetchFrame(layerSearchingFrom: this, dependency, prevFetch);
+		}
 
-			FetchFrame fail(out T d, out bool f) {
-				f = false;
-				d = default;
-				return FetchFrame.CleanupFree;
+		bool _DependencyLayerInternal.StealthTryGet<T>(out T dependency, out int stackLevel, bool useFallbacks, out IDependencyLayer layerFoundIn)
+		{
+			if (!this._dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {
+				// No stack found, or found stack is empty
+				if (useFallbacks && this.Fallback != null)
+					return ((_DependencyLayerInternal)this.Fallback).StealthTryGet(
+						out dependency,
+						out stackLevel,
+						useFallbacks,
+						out layerFoundIn
+					);
+				else return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 			}
+
+			var dInfo = stack.Peek();
+			dependency = (T)dInfo.dependency;
+
+			// Fail if a null has been added to hide earlier dependencies
+			if (dependency == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+
+			// Otherwise, succeed
+			stackLevel = dInfo.stackLevel;
+			layerFoundIn = this;
+			return true;
 		}
 
 
@@ -250,31 +271,13 @@ namespace SimpleDI
 		/// </exception>
 		public FetchFrame TryGetOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
 		{
-			if (self == null) throw new ArgumentNullException(nameof(self));
-
-			if (self.GetType().IsValueType) throw new ArgumentTypeException(
-				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
-				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
-				nameof(self)
-			);
-
-			if (!tryGetFromFetchRecord(self, out FetchRecord mostRecentFetch, useFallbacks, out var layerFetchFoundIn)) {
-				throw new ArgumentException(
-					$"No record is available of a dependency fetch having been performed for object '{self}' " +
-					$"(of type '{self.GetType().FullName}'). " +
-					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
-				);
-			}
-
-			if (!tryFindMostRecentBeforeFetch(out StackedDependency outerInfo, out DependencyLayer layerOuterFoundIn)) {
-				outerDependency = default;
-				found = false;
-				return FetchFrame.CleanupFree;
-			}
-
-			outerDependency = (TOuter)outerInfo.dependency;
-
-			if (outerDependency == null) {
+			if (!((_DependencyLayerInternal)this).StealthTryGetOuter(
+				self,
+				out outerDependency,
+				out int outerStackLevel,
+				useFallbacks,
+				out var layerOuterFoundIn
+			)) {
 				outerDependency = default;
 				found = false;
 				return FetchFrame.CleanupFree;
@@ -283,102 +286,116 @@ namespace SimpleDI
 			found = true;
 
 			// Now add to the current layer's _fetchRecords that the outer dependency was just fetched
-			this.addToFetchRecord(outerDependency, layerOuterFoundIn, outerInfo.stackLevel, out FetchRecord prevOuterFetch);
+			this.addToFetchRecord(outerDependency, layerOuterFoundIn, outerStackLevel, out FetchRecord prevOuterFetch);
 
-			return new FetchFrame(layerSearchingFrom: this, outerInfo.dependency, prevOuterFetch);
-
-			bool tryFindMostRecentBeforeFetch(out StackedDependency mostRecent, out DependencyLayer layerFoundIn)
-			{
-				if (!layerFetchFoundIn.tryGetFromDependencyStacks(
-					typeof(TOuter),
-					out var stack,
-					useFallbacks,
-					out var layerStackFoundIn
-				)) {
-					mostRecent = default;
-					layerFoundIn = null;
-					return false;
-				}
-
-				// We previously found the previous time 'self' was fetched, and got the layer it was in.
-				// Now we've just looked for a stack of dependencies against type TOuter, in that layer or
-				// a fallback layer (if useFallbacks = true).
-				// If the stack was in a different layer, we can just get the top of the stack
-				// (which is also guaranteed to be non-empty).
-				// However, if the stack was in the same layer, then some dependencies might've
-				// been added to it since 'self' was fetched. In that case, we need to do a binary
-				// search through the stack, to find the most recent entry before 'self' was fetched.
-				// If there is no such entry in the stack, then (if useFallbacks = true) we need to
-				// fallback to previous layers (and then just get the top of whatever stack we find).
-
-				// If the layers are different, just get the top of the stack and return
-
-				if (!ReferenceEquals(layerStackFoundIn, layerFetchFoundIn))
-				{
-					mostRecent = stack.Peek();
-					layerFoundIn = layerStackFoundIn;
-					return true;
-				}
-
-				// Otherwise, layers are the same; do a binary search
-
-				int pos = stack.BinarySearch(
-					new StackedDependency(mostRecentFetch.stackLevelFoundAt, null),
-					new StackSearchComparer()
-				);
-
-				// That returns either the position of an exact match, or the bitwise complement
-				// of the position of the next greater element. We need the position of the previous
-				// element (even if it was an exact match - we shouldn't return dependencies that
-				// were injected simultaneously, only ones injected previously). So:
-
-				int prevPos;
-				if (pos >= 0) {
-					prevPos = pos - 1;
-				} else {
-					int nextPos = ~pos;
-					prevPos = nextPos - 1;
-				}
-
-				// Now, if prevPos >= 0, we've sucessfully found the dependency
-
-				if (pos >= 0) {
-					mostRecent = stack[prevPos];
-					layerFoundIn = layerStackFoundIn;
-					return true;
-				}
-
-				// But otherwise, we need to fall back to previous layers (if we can)
-				
-				if (!useFallbacks || layerStackFoundIn.Fallback == null) {
-					// Not allowed to fall back, or nothing to fall back to
-					mostRecent = default;
-					layerFoundIn = null;
-					return false;
-				}
-
-				if (layerStackFoundIn.Fallback.tryGetFromDependencyStacks(
-					typeof(TOuter),
-					out var fallbackStack,
-					useFallbacks,
-					out var fallbackLayerStackFoundIn
-				)) {
-					mostRecent = fallbackStack.Peek(); // guaranteed non-empty
-					layerFoundIn = fallbackLayerStackFoundIn;
-					return true;
-				} else {
-					mostRecent = default;
-					layerFoundIn = null;
-					return false;
-				}
-			}
+			return new FetchFrame(layerSearchingFrom: this, outerDependency, prevOuterFetch);
 		}
 
+		bool _DependencyLayerInternal.StealthTryGetOuter<TOuter>(
+			object self,
+			out TOuter dependency,
+			out int stackLevel,
+			bool useFallbacks,
+			out IDependencyLayer layerFoundIn
+		) {
+			if (self == null) throw new ArgumentNullException(nameof(self));
+
+			if (self.GetType().IsValueType) throw new ArgumentTypeException(
+				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
+				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
+				nameof(self)
+			);
+
+			// Try to find a fetch record locally
+			// If we can't, then try to use fallbacks if possible, calling the current method recursively
+			if (!this._fetchRecords.TryGetValue(self, out FetchRecord mostRecentFetch))
+			{
+				if (!useFallbacks || this.Fallback == null) throw new ArgumentException(
+					$"No record is available of a dependency fetch having been performed for object '{self}' " +
+					$"(of type '{self.GetType().FullName}'). " +
+					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
+				);
+
+				return ((_DependencyLayerInternal)this.Fallback).StealthTryGetOuter(
+					self,
+					out dependency,
+					out stackLevel,
+					useFallbacks,
+					out layerFoundIn
+				);
+			}
+			
+			// Try to find a dependency of type TOuter locally
+			// If we can't, then try to use fallbacks if possible, and return whatever we find 
+			if (!this._dependencyStacks.TryGetValue(typeof(TOuter), out var stack) || stack.Count == 0)
+			{
+				if (!useFallbacks || this.Fallback == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+				
+				return ((_DependencyLayerInternal)this.Fallback).StealthTryGet(
+					out dependency,
+					out stackLevel,
+					useFallbacks,
+					out layerFoundIn
+				);
+			}
+
+			// If we successfully found a dependency of type TOuter locally,
+			// then we can't just return the top of the stack - as that might've
+			// been added after the found fetch record was written. To fix this,
+			// we do a binary search through the TOuter stack to find the last
+			// dependency of type TOuter added before the fetch record was written.
+
+			int pos = stack.BinarySearch(
+				new StackedDependency(mostRecentFetch.stackLevelFoundAt, null),
+				new StackSearchComparer()
+			);
+
+			// That returns either the position of an exact match, or the bitwise complement
+			// of the position of the next greater element. We need the position of the previous
+			// element (even if it was an exact match - we shouldn't return dependencies that
+			// were injected simultaneously, only ones injected previously). So:
+
+			int prevPos;
+			if (pos >= 0) {
+				prevPos = pos - 1;
+			} else {
+				int nextPos = ~pos;
+				prevPos = nextPos - 1;
+			}
+
+			// Now, if prevPos >= 0, we've sucessfully found the dependency locally
+
+			if (pos >= 0) {
+				var outerInfo = stack[prevPos];
+
+				// TODO: Should it be possible to hide non-nullable value type dependencies?? Currently isn't
+				// Fail if a null has been added to hide earlier dependencies
+				if (outerInfo.dependency == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+
+				dependency = (TOuter)outerInfo.dependency;
+				stackLevel = outerInfo.stackLevel;
+				layerFoundIn = this;
+				return true;
+			}
+
+			// But otherwise, we need to fall back to previous layers (if we can)
+				
+			// First check that we can fall back (if not, fail)
+			if (!useFallbacks || this.Fallback == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+
+			// Fallback to previous layers
+			return ((_DependencyLayerInternal)this.Fallback).StealthTryGet(
+				out dependency,
+				out stackLevel,
+				useFallbacks,
+				out layerFoundIn
+			);
+		}
 
 
 		private void addToFetchRecord(
 			object dependency,
-			DependencyLayer layerFoundIn,
+			IDependencyLayer layerFoundIn,
 			int stackLevelFoundAt,
 			out FetchRecord prevFetch
 		) {
@@ -392,62 +409,16 @@ namespace SimpleDI
 			_fetchRecords[dependency] = new FetchRecord(layerFoundIn, stackLevelFoundAt);
 		}
 
-		private bool tryGetFromFetchRecord(
-			object key,
-			out FetchRecord value,
-			bool useFallbacks,
-			out DependencyLayer layerFoundIn
-		) {
-			var layer = this;
-
-			while (layer != null) {
-				if (layer._fetchRecords.TryGetValue(key, out value)) {
-					layerFoundIn = layer;
-					return true;
-				}
-
-				if (useFallbacks) layer = layer.Fallback;
-				else break;
-			}
-
-			value = default;
-			layerFoundIn = null;
-			return false;
-		}
-
-		private bool tryGetFromDependencyStacks(
-			Type key,
-			out SearchableStack<StackedDependency> value,
-			bool useFallbacks,
-			out DependencyLayer layerFoundIn
-		) {
-			var layer = this;
-
-			while (layer != null) {
-				if (layer._dependencyStacks.TryGetValue(key, out value) && value.Count > 0) {
-					layerFoundIn = layer;
-					return true;
-				}
-
-				if (useFallbacks) layer = layer.Fallback;
-				else break;
-			}
-
-			value = default;
-			layerFoundIn = null;
-			return false;
-		}
 
 
-
-		internal void CloseFetchFrame(FetchFrame frame)
+		void _DependencyLayerInternal.CloseFetchFrame(FetchFrame frame)
 		{
 			if (frame.IsCleanupFree) return;
 
 			closeFetchedDependency_internal(frame.dependency, frame.prevFetch);
 		}
 
-		internal void CloseFetchFrame(MultiFetchFrame multiFrame)
+		void _DependencyLayerInternal.CloseFetchFrame(MultiFetchFrame multiFrame)
 		{
 			if (multiFrame.IsCleanupFree) return;
 

@@ -88,7 +88,7 @@ namespace SimpleDI
 
 
 
-		internal SimultaneousInjectFrame InjectMoreSimultaneously<T>(
+		SimultaneousInjectFrame _DependencyLayerInternal.InjectMoreSimultaneously<T>(
 			SimultaneousInjectFrame soFar,
 			T dependency,
 			bool isWildcard
@@ -96,7 +96,7 @@ namespace SimpleDI
 			return injectMoreSimultaneously_internal(soFar, dependency, typeof(T), isWildcard);
 		}
 
-		internal SimultaneousInjectFrame InjectMoreSimultaneously(
+		SimultaneousInjectFrame _DependencyLayerInternal.InjectMoreSimultaneously(
 			SimultaneousInjectFrame soFar,
 			object dependency,
 			Type toMatchAgainst,
@@ -221,7 +221,7 @@ namespace SimpleDI
 
 
 		
-		internal void CloseInjectFrame(InjectFrame frame)
+		void _DependencyLayerInternal.CloseInjectFrame(InjectFrame frame)
 		{
 			if (frame.layer != this) throw new InjectFrameCloseException(
 				$"Cannot close inject frame as it does not belong to the current dependency layer " +
@@ -237,7 +237,7 @@ namespace SimpleDI
 			uninjectDependency_internal(frame.type, frame.stackLevel);
 		}
 
-		internal void CloseInjectFrame(SimultaneousInjectFrame frame)
+		void _DependencyLayerInternal.CloseInjectFrame(SimultaneousInjectFrame frame)
 		{
 			if (frame.layer != this) throw new InjectFrameCloseException(
 				$"Cannot close inject frame as it does not belong to the current dependency layer " +

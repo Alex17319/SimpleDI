@@ -13,8 +13,8 @@ namespace SimpleDI
 	public static class Dependencies
 	{
 		[ThreadStatic]
-		private static DependencyLayer _currentLayer = new DependencyLayer();
-		public static DependencyLayer CurrentLayer => _currentLayer;
+		private static IDependencyLayer _currentLayer = new DependencyLayer();
+		public static IDependencyLayer CurrentLayer => _currentLayer;
 
 		public static event EventHandler<LayerCloseErrorEventArgs> LayerCloseMismatch;
 
@@ -23,13 +23,13 @@ namespace SimpleDI
 		public static SafeDisposeExceptionsRegion SafeDisposeExceptions()
 			=> DisposeExceptionsManager.SafeDisposeExceptions();
 
-		public static DependencyLayer.Disposer NewLayer()
+		public static IDisposableLayer NewLayer()
 		{
 			_currentLayer = new DependencyLayer(fallback: CurrentLayer);
-			return _currentLayer.GetDisposer();
+			return ((_DependencyLayerInternal)_currentLayer).AsDisposable();
 		}
 
-		internal static void CloseLayer(DependencyLayer layer)
+		internal static void CloseLayer(IDependencyLayer layer)
 		{
 			if (layer != CurrentLayer) {
 				LayerCloseMismatch?.Invoke(null, new LayerCloseErrorEventArgs(CurrentLayer, layer));
@@ -63,17 +63,17 @@ namespace SimpleDI
 			var l = CurrentLayer;
 			while (l != null) {
 				if (l == layer) {
-					l.MarkDisposed(); // just in case
+					((_DependencyLayerInternal)l).MarkDisposed(); // just in case
 					_currentLayer = l.Fallback; // close all layers below l.Fallback
 					return;
 				}
 
-				l.MarkDisposed();
+				((_DependencyLayerInternal)l).MarkDisposed();
 				l = l.Fallback;
 			}
 		}
 
-		private static bool isParentOfLayer(DependencyLayer parent, DependencyLayer child)
+		private static bool isParentOfLayer(IDependencyLayer parent, IDependencyLayer child)
 		{
 			var l = child;
 			while (l != null) {

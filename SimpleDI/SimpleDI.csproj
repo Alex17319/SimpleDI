@@ -59,6 +59,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IDependencyLayer.cs" />
+    <Compile Include="IDisposableLayer.cs" />
+    <Compile Include="TryGet\Logic.cs" />
     <Compile Include="Utility Classes\ArgumentTypeException.cs" />
     <Compile Include="Dependencies.cs" />
     <Compile Include="DependencyLayer.Inject.cs" />

@@ -14,7 +14,7 @@ using SimpleDI.DisposeExceptions;
 
 namespace SimpleDI
 {
-	public partial class DependencyLayer
+	public partial class DependencyLayer : _DependencyLayerInternal, IDependencyLayer
 	{
 		// For future improvement: Maybe try to implement wildcard dependencies more efficiently (wildcard = returned
 		// when any parent class/interface is requested, rather than just when exactly the correct type is requested).
@@ -40,7 +40,7 @@ namespace SimpleDI
 		/// <summary>
 		/// Fallbacks are used to increase the search space, but will not be modified in any way.
 		/// </summary>
-		public DependencyLayer Fallback { get; }
+		public IDependencyLayer Fallback { get; }
 
 
 		internal DependencyLayer()
@@ -48,7 +48,7 @@ namespace SimpleDI
 			this.Fallback = null;
 		}
 
-		internal DependencyLayer(DependencyLayer fallback)
+		internal DependencyLayer(IDependencyLayer fallback)
 		{
 			this.Fallback = fallback ?? throw new ArgumentNullException(nameof(fallback));
 		}
@@ -71,23 +71,23 @@ namespace SimpleDI
 			Dependencies.CloseLayer(this);
 		}
 
-		internal void MarkDisposed()
+		void _DependencyLayerInternal.MarkDisposed()
 		{
 			_disposed = true;
 		}
 
-		internal Disposer GetDisposer()
+		IDisposableLayer _DependencyLayerInternal.AsDisposable()
 		{
 			return new Disposer(this);
 		}
 
 		// Used to prevent people from randomly calling Dependencies.CurrentLayer.Dispose()
-		// Instead of DependencyLayer implementing IDisposable, this struct implements it,
+		// Instead of DependencyLayer implementing IDisposable, this class implements it,
 		// and passes on the call to DependencyLayer. External code can't make a proper
-		// instance of this struct in order to call Dispose() (except via reflection)
-		public struct Disposer : IDisposable
+		// instance of this class in order to call Dispose() (except via reflection)
+		private class Disposer : IDisposableLayer
 		{
-			public readonly DependencyLayer Layer;
+			public DependencyLayer Layer { get; }
 
 			public bool IsNull => Layer == null;
 			public static readonly Disposer Null = default;
