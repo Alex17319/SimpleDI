@@ -1,74 +1,95 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using SimpleDI.DisposeExceptions;
 
 namespace SimpleDI
 {
-	public partial class MutatingDependencyLayer : DependencyLayer
+	public abstract class DependencyLayer
 	{
-		// For future improvement: Maybe try to implement wildcard dependencies more efficiently (wildcard = returned
-		// when any parent class/interface is requested, rather than just when exactly the correct type is requested).
-		// Most of the time I'm guessing wildcards won't be used though, so shouldn't sacrifice efficiency elsewhere.
-
-		// Maps from a type to a stack of all dependencies matching that type that are available.
-		// Depending on the use of strict (default) or wildcard insertion, dependencies of sub-types may or may not
-		// also be returned
-		// Each stack is always sorted in descending order by stackLevel (often with gaps), and may be
-		// searched through with a binary search (the need for both binary search and stack operations resulted
-		// in the SearchableStack<T> class)
-		private readonly Dictionary<Type, SearchableStack<StackedDependency>> _dependencyStacks
-			= new Dictionary<Type, SearchableStack<StackedDependency>>();
-
-		// Maps from a dependency that has been fetched to the stack level that it was originally injected at
-		private readonly Dictionary<object, FetchRecord> _fetchRecords
-			= new Dictionary<object, FetchRecord>(new RefEqualityComparer());
-
-		private int stackLevel;
-
-
-		internal MutatingDependencyLayer() : base() { }
-		internal MutatingDependencyLayer(DependencyLayer fallback) : base(fallback) { }
-
-
-
-		private static void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
-		{
-			if (dependency != null && !type.IsInstanceOfType(dependency)) throw new ArgumentTypeException(
-				$"Cannot add {dependencyMoniker} as object is of type '{dependency.GetType().FullName}' " +
-				$"and is not an instance of provided match type {type.FullName}."
-			);
-		}
-
-		private class RefEqualityComparer : IEqualityComparer<object>
-		{
-			public RefEqualityComparer() { }
-
-			public new bool Equals(object x, object y) => ReferenceEquals(x, y);
-
-			public int GetHashCode(object obj) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
-		}
-
 		/// <summary>
-		/// Compares by stack level only
+		/// Fallbacks are used to increase the search space, but will not be modified in any way.
 		/// </summary>
-		private class StackSearchComparer : IComparer<StackedDependency>
-		{
-			public StackSearchComparer() { }
+		public DependencyLayer Fallback { get; }
 
-			public int Compare(StackedDependency x, StackedDependency y)
-				=> x.stackLevel.CompareTo(y.stackLevel);
+		private bool _disposed = false;
+
+		internal DependencyLayer()
+		{
+			this.Fallback = null;
 		}
+
+		internal DependencyLayer(DependencyLayer fallback)
+		{
+			this.Fallback = fallback ?? throw new ArgumentNullException(nameof(fallback));
+		}
+
+		private void Dispose()
+		{
+			if (_disposed) return;
+			_disposed = true;
+
+			Dependencies.CloseLayer(this);
+		}
+
+		internal void MarkDisposed()
+		{
+			_disposed = true;
+		}
+
+		internal IDisposableLayer AsDisposable()
+		{
+			return new Disposer(this);
+		}
+
+		// Used to prevent people from randomly calling Dependencies.CurrentLayer.Dispose()
+		// Instead of DependencyLayer implementing IDisposable, this class implements it,
+		// and passes on the call to DependencyLayer. External code can't make a proper
+		// instance of this class in order to call Dispose() (except via reflection)
+		private class Disposer : IDisposableLayer
+		{
+			public DependencyLayer Layer { get; }
+
+			public bool IsNull => Layer == null;
+			public static readonly Disposer Null = default;
+
+			internal Disposer(DependencyLayer layer) {
+				this.Layer = layer;
+			}
+
+			public void Dispose() {
+				this.Layer.Dispose();
+			}
+		}
+
+		public abstract SimultaneousInjectFrame BeginSimultaneousInject();
+		public abstract FetchFrame Get<T>(out T dependency, bool useFallbacks);
+		public abstract FetchFrame GetNullableOrNull<T>(out T? dependency, bool useFallbacks) where T : struct;
+		public abstract FetchFrame GetOrNull<T>(out T dependency, bool useFallbacks) where T : class;
+		public abstract FetchFrame GetOrNull<T>(out T? dependency, bool useFallbacks) where T : struct;
+		public abstract FetchFrame GetOuter<TOuter>(object self, out TOuter outerDependency, bool useFallbacks);
+		public abstract FetchFrame GetOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks) where TOuter : struct;
+		public abstract FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter outerDependency, bool useFallbacks) where TOuter : class;
+		public abstract FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks) where TOuter : struct;
+		public abstract InjectFrame Inject(object dependency, Type toMatchAgainst);
+		public abstract InjectFrame Inject<T>(T dependency);
+		public abstract SimultaneousInjectFrame InjectWild(object dependency, Type toMatchAgainst);
+		public abstract SimultaneousInjectFrame InjectWild<T>(T dependency);
+		public abstract FetchFrame TryGet<T>(out T dependency, out bool found, bool useFallbacks);
+		public abstract FetchFrame TryGetOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks);
+
+		internal abstract SimultaneousInjectFrame InjectMoreSimultaneously<T>(SimultaneousInjectFrame soFar, T dependency, bool isWildcard);
+		internal abstract SimultaneousInjectFrame InjectMoreSimultaneously(SimultaneousInjectFrame soFar, object dependency, Type toMatchAgainst, bool isWildcard);
+
+		protected abstract bool StealthTryGet<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
+		protected abstract bool StealthTryGetOuter<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
+
+		protected static bool StealthTryGet<T>(DependencyLayer @this, out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+			=> @this.StealthTryGet(out dependency, out stackLevel, useFallbacks, out layerFoundIn);
+
+		protected static bool StealthTryGetOuter<TOuter>(DependencyLayer @this, object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+			=> @this.StealthTryGetOuter(self, out dependency, out stackLevel, useFallbacks, out layerFoundIn);
+
+		internal abstract void CloseInjectFrame(InjectFrame frame);
+		internal abstract void CloseInjectFrame(SimultaneousInjectFrame frame);
+		internal abstract void CloseFetchFrame(FetchFrame frame);
+		internal abstract void CloseFetchFrame(MultiFetchFrame multiFrame);
 	}
 }
-
-//*/

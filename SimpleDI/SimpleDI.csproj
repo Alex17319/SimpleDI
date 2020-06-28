@@ -59,14 +59,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IDependencyLayer.cs" />
+    <Compile Include="DependencyLayer.cs" />
     <Compile Include="IDisposableLayer.cs" />
     <Compile Include="TryGet\Logic.cs" />
     <Compile Include="Utility Classes\ArgumentTypeException.cs" />
     <Compile Include="Dependencies.cs" />
-    <Compile Include="DependencyLayer.Inject.cs" />
-    <Compile Include="DependencyLayer.Get.cs" />
-    <Compile Include="DependencyLayer.cs" />
+    <Compile Include="MutatingDependencyLayer.Inject.cs" />
+    <Compile Include="MutatingDependencyLayer.Get.cs" />
+    <Compile Include="MutatingDependencyLayer.cs" />
     <Compile Include="DisposeExceptions\DisposeExceptionsManager.cs" />
     <Compile Include="DisposeExceptions\RegionCloseErrorEventArgs.cs" />
     <Compile Include="FetchFrame.cs" />
