@@ -27,7 +27,7 @@ namespace SimpleDI
 		/// <exception cref="DependencyNotFoundException">
 		/// No dependency against type <typeparamref name="T"/> is available.
 		/// </exception>
-		public FetchFrame Get<T>(out T dependency, bool useFallbacks)
+		public override FetchFrame Get<T>(out T dependency, bool useFallbacks)
 		{
 			FetchFrame result = TryGet(out dependency, out bool found, useFallbacks);
 			if (!found) throw new DependencyNotFoundException(typeof(T));
@@ -41,8 +41,7 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public FetchFrame GetOrNull<T>(out T dependency, bool useFallbacks)
-			where T : class
+		public override FetchFrame GetOrNull<T>(out T dependency, bool useFallbacks)
 		{
 			FetchFrame result = TryGet(out dependency, out bool found, useFallbacks);
 			if (!found) dependency = null;
@@ -58,8 +57,7 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public FetchFrame GetOrNull<T>(out T? dependency, bool useFallbacks)
-			where T : struct
+		public override FetchFrame GetOrNull<T>(out T? dependency, bool useFallbacks)
 		{
 			FetchFrame result = TryGet(out T dep, out bool found, useFallbacks);
 			dependency = found ? dep : (T?)null;
@@ -80,8 +78,7 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public FetchFrame GetNullableOrNull<T>(out T? dependency, bool useFallbacks)
-			where T : struct
+		public override FetchFrame GetNullableOrNull<T>(out T? dependency, bool useFallbacks)
 		{
 			FetchFrame result = TryGet(out dependency, out bool found, useFallbacks);
 			if (!found) dependency = null;
@@ -96,9 +93,9 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <param name="found"></param>
 		/// <returns></returns>
-		public FetchFrame TryGet<T>(out T dependency, out bool found, bool useFallbacks)
+		public override FetchFrame TryGet<T>(out T dependency, out bool found, bool useFallbacks)
 		{
-			if (!((_DependencyLayerInternal)this).StealthTryGet(
+			if (!this.StealthTryGet(
 				out dependency,
 				out int stackLevel,
 				useFallbacks,
@@ -120,12 +117,13 @@ namespace SimpleDI
 			return new FetchFrame(layerSearchingFrom: this, dependency, prevFetch);
 		}
 
-		bool _DependencyLayerInternal.StealthTryGet<T>(out T dependency, out int stackLevel, bool useFallbacks, out IDependencyLayer layerFoundIn)
+		protected override bool StealthTryGet<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 		{
 			if (!this._dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {
 				// No stack found, or found stack is empty
 				if (useFallbacks && this.Fallback != null)
-					return ((_DependencyLayerInternal)this.Fallback).StealthTryGet(
+					return DependencyLayer.StealthTryGet(
+						this.Fallback,
 						out dependency,
 						out stackLevel,
 						useFallbacks,
@@ -166,7 +164,7 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame GetOuter<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
+		public override FetchFrame GetOuter<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
 		{
 			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found, useFallbacks);
 			if (!found) throw new DependencyNotFoundException(typeof(TOuter));
@@ -188,8 +186,7 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
-			where TOuter : class
+		public override FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
 		{
 			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found, useFallbacks);
 			if (!found) outerDependency = null;
@@ -211,8 +208,7 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
-			where TOuter : struct
+		public override FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
 		{
 			FetchFrame result = TryGetOuter(self, out TOuter oDep, out bool found, useFallbacks);
 			outerDependency = found ? oDep : (TOuter?)null;
@@ -239,8 +235,7 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame GetOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
-			where TOuter : struct
+		public override FetchFrame GetOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
 		{
 			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found, useFallbacks);
 			if (!found) outerDependency = null;
@@ -269,9 +264,9 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame TryGetOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
+		public override FetchFrame TryGetOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
 		{
-			if (!((_DependencyLayerInternal)this).StealthTryGetOuter(
+			if (!this.StealthTryGetOuter(
 				self,
 				out outerDependency,
 				out int outerStackLevel,
@@ -291,12 +286,12 @@ namespace SimpleDI
 			return new FetchFrame(layerSearchingFrom: this, outerDependency, prevOuterFetch);
 		}
 
-		bool _DependencyLayerInternal.StealthTryGetOuter<TOuter>(
+		protected override bool StealthTryGetOuter<TOuter>(
 			object self,
 			out TOuter dependency,
 			out int stackLevel,
 			bool useFallbacks,
-			out IDependencyLayer layerFoundIn
+			out DependencyLayer layerFoundIn
 		) {
 			if (self == null) throw new ArgumentNullException(nameof(self));
 
@@ -316,7 +311,8 @@ namespace SimpleDI
 					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
 				);
 
-				return ((_DependencyLayerInternal)this.Fallback).StealthTryGetOuter(
+				return DependencyLayer.StealthTryGetOuter(
+					this.Fallback,
 					self,
 					out dependency,
 					out stackLevel,
@@ -331,7 +327,8 @@ namespace SimpleDI
 			{
 				if (!useFallbacks || this.Fallback == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 				
-				return ((_DependencyLayerInternal)this.Fallback).StealthTryGet(
+				return DependencyLayer.StealthTryGet(
+					this.Fallback,
 					out dependency,
 					out stackLevel,
 					useFallbacks,
@@ -384,7 +381,8 @@ namespace SimpleDI
 			if (!useFallbacks || this.Fallback == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
 			// Fallback to previous layers
-			return ((_DependencyLayerInternal)this.Fallback).StealthTryGet(
+			return DependencyLayer.StealthTryGet(
+				this.Fallback,
 				out dependency,
 				out stackLevel,
 				useFallbacks,
@@ -395,7 +393,7 @@ namespace SimpleDI
 
 		private void addToFetchRecord(
 			object dependency,
-			IDependencyLayer layerFoundIn,
+			DependencyLayer layerFoundIn,
 			int stackLevelFoundAt,
 			out FetchRecord prevFetch
 		) {
@@ -411,14 +409,14 @@ namespace SimpleDI
 
 
 
-		void _DependencyLayerInternal.CloseFetchFrame(FetchFrame frame)
+		internal override void CloseFetchFrame(FetchFrame frame)
 		{
 			if (frame.IsCleanupFree) return;
 
 			closeFetchedDependency_internal(frame.dependency, frame.prevFetch);
 		}
 
-		void _DependencyLayerInternal.CloseFetchFrame(MultiFetchFrame multiFrame)
+		internal override void CloseFetchFrame(MultiFetchFrame multiFrame)
 		{
 			if (multiFrame.IsCleanupFree) return;
 

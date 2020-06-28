@@ -13,8 +13,8 @@ namespace SimpleDI
 	public static class Dependencies
 	{
 		[ThreadStatic]
-		private static IDependencyLayer _currentLayer = new MutatingDependencyLayer();
-		public static IDependencyLayer CurrentLayer => _currentLayer;
+		private static DependencyLayer _currentLayer = new MutatingDependencyLayer();
+		public static DependencyLayer CurrentLayer => _currentLayer;
 
 		public static event EventHandler<LayerCloseErrorEventArgs> LayerCloseMismatch;
 
@@ -26,10 +26,10 @@ namespace SimpleDI
 		public static IDisposableLayer NewLayer()
 		{
 			_currentLayer = new MutatingDependencyLayer(fallback: CurrentLayer);
-			return ((_DependencyLayerInternal)_currentLayer).AsDisposable();
+			return _currentLayer.AsDisposable();
 		}
 
-		internal static void CloseLayer(IDependencyLayer layer)
+		internal static void CloseLayer(DependencyLayer layer)
 		{
 			if (layer != CurrentLayer) {
 				LayerCloseMismatch?.Invoke(null, new LayerCloseErrorEventArgs(CurrentLayer, layer));
@@ -63,17 +63,17 @@ namespace SimpleDI
 			var l = CurrentLayer;
 			while (l != null) {
 				if (l == layer) {
-					((_DependencyLayerInternal)l).MarkDisposed(); // just in case
+					l.MarkDisposed(); // just in case
 					_currentLayer = l.Fallback; // close all layers below l.Fallback
 					return;
 				}
 
-				((_DependencyLayerInternal)l).MarkDisposed();
+				l.MarkDisposed();
 				l = l.Fallback;
 			}
 		}
 
-		private static bool isParentOfLayer(IDependencyLayer parent, IDependencyLayer child)
+		private static bool isParentOfLayer(DependencyLayer parent, DependencyLayer child)
 		{
 			var l = child;
 			while (l != null) {

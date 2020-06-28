@@ -15,7 +15,7 @@ namespace SimpleDI
 {
 	public struct MultiFetchFrame : IDisposable
 	{
-		internal readonly _DependencyLayerInternal layerSearchingFrom;
+		internal readonly DependencyLayer layerSearchingFrom;
 		internal ImmutableStack<FetchFrame> frames;
 		private readonly bool _needsCleanup;
 
@@ -25,7 +25,7 @@ namespace SimpleDI
 		/// <remarks>True if and only if no dependencies are stored.</remarks>
 		public bool IsCleanupFree => !_needsCleanup;
 
-		private MultiFetchFrame(_DependencyLayerInternal layerSearchingFrom, ImmutableStack<FetchFrame> frames)
+		private MultiFetchFrame(DependencyLayer layerSearchingFrom, ImmutableStack<FetchFrame> frames)
 		{
 			this.layerSearchingFrom = layerSearchingFrom ?? throw new ArgumentNullException(nameof(layerSearchingFrom));
 			this.frames = frames ?? throw new ArgumentNullException(nameof(frames));

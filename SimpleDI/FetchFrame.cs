@@ -17,7 +17,7 @@ namespace SimpleDI
 		internal const int NoPrevious = -1;
 		private const int CleanupFreeFlag = -2;
 
-		internal readonly _DependencyLayerInternal layerSearchingFrom;
+		internal readonly DependencyLayer layerSearchingFrom;
 		internal readonly object dependency;
 		internal readonly FetchRecord prevFetch;
 
@@ -28,7 +28,7 @@ namespace SimpleDI
 
 		private bool _disposed;
 
-		internal FetchFrame(_DependencyLayerInternal layerSearchingFrom, object dependency, FetchRecord prevFetch)
+		internal FetchFrame(DependencyLayer layerSearchingFrom, object dependency, FetchRecord prevFetch)
 		{
 			this.layerSearchingFrom = layerSearchingFrom ?? throw new ArgumentNullException(nameof(layerSearchingFrom));
 			this.dependency = dependency ?? throw new ArgumentNullException(nameof(layerSearchingFrom));

@@ -14,10 +14,10 @@ namespace SimpleDI
 {
 	public class LayerCloseErrorEventArgs : EventArgs
 	{
-		public IDependencyLayer CurrentLayer { get; }
-		public IDependencyLayer LayerToClose { get; }
+		public DependencyLayer CurrentLayer { get; }
+		public DependencyLayer LayerToClose { get; }
 
-		public LayerCloseErrorEventArgs(IDependencyLayer currentLayer, IDependencyLayer layerToClose)
+		public LayerCloseErrorEventArgs(DependencyLayer currentLayer, DependencyLayer layerToClose)
 		{
 			this.CurrentLayer = currentLayer;
 			this.LayerToClose = layerToClose;

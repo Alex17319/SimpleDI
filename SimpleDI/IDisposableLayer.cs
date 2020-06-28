@@ -10,7 +10,7 @@ namespace SimpleDI
 {
 	public interface IDisposableLayer : IDisposable
 	{
-		MutatingDependencyLayer Layer { get; }
+		DependencyLayer Layer { get; }
 	}
 
 	//	internal interface _DisposableLayerInternal : IDisposableLayer

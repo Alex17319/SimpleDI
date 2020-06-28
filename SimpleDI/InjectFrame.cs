@@ -15,7 +15,7 @@ namespace SimpleDI
 {
 	public struct InjectFrame : IDisposable
 	{
-		internal readonly _DependencyLayerInternal layer;
+		internal readonly DependencyLayer layer;
 		internal readonly int stackLevel;
 		internal readonly Type type;
 
@@ -24,7 +24,7 @@ namespace SimpleDI
 
 		private bool _disposed;
 
-		internal InjectFrame(_DependencyLayerInternal layer, int stackLevel, Type type)
+		internal InjectFrame(DependencyLayer layer, int stackLevel, Type type)
 		{
 			if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), "Cannot be negative.");
 

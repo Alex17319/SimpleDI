@@ -15,7 +15,7 @@ namespace SimpleDI
 {
 	public struct SimultaneousInjectFrame : IDisposable
 	{
-		internal readonly _DependencyLayerInternal layer;
+		internal readonly DependencyLayer layer;
 		internal readonly int stackLevel;
 		internal readonly ImmutableStack<Type> types;
 
@@ -24,7 +24,7 @@ namespace SimpleDI
 
 		private bool _disposed;
 
-		internal SimultaneousInjectFrame(_DependencyLayerInternal layer)
+		internal SimultaneousInjectFrame(DependencyLayer layer)
 		{
 			this.layer = layer ?? throw new ArgumentNullException(nameof(layer));
 			this.stackLevel = default;
@@ -32,7 +32,7 @@ namespace SimpleDI
 			this._disposed = false;
 		}
 
-		internal SimultaneousInjectFrame(_DependencyLayerInternal layer, int stackLevel, ImmutableStack<Type> types)
+		internal SimultaneousInjectFrame(DependencyLayer layer, int stackLevel, ImmutableStack<Type> types)
 		{
 			if (layer == null) throw new ArgumentNullException(nameof(layer));
 			if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), "Cannot be negative.");

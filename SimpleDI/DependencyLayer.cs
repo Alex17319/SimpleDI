@@ -14,7 +14,7 @@ using SimpleDI.DisposeExceptions;
 
 namespace SimpleDI
 {
-	public partial class MutatingDependencyLayer : _DependencyLayerInternal, IDependencyLayer
+	public partial class MutatingDependencyLayer : DependencyLayer
 	{
 		// For future improvement: Maybe try to implement wildcard dependencies more efficiently (wildcard = returned
 		// when any parent class/interface is requested, rather than just when exactly the correct type is requested).
@@ -35,23 +35,9 @@ namespace SimpleDI
 
 		private int stackLevel;
 
-		private bool _disposed = false;
 
-		/// <summary>
-		/// Fallbacks are used to increase the search space, but will not be modified in any way.
-		/// </summary>
-		public IDependencyLayer Fallback { get; }
-
-
-		internal MutatingDependencyLayer()
-		{
-			this.Fallback = null;
-		}
-
-		internal MutatingDependencyLayer(IDependencyLayer fallback)
-		{
-			this.Fallback = fallback ?? throw new ArgumentNullException(nameof(fallback));
-		}
+		internal MutatingDependencyLayer() : base() { }
+		internal MutatingDependencyLayer(DependencyLayer fallback) : base(fallback) { }
 
 
 
@@ -61,44 +47,6 @@ namespace SimpleDI
 				$"Cannot add {dependencyMoniker} as object is of type '{dependency.GetType().FullName}' " +
 				$"and is not an instance of provided match type {type.FullName}."
 			);
-		}
-
-		private void Dispose()
-		{
-			if (_disposed) return;
-			_disposed = true;
-
-			Dependencies.CloseLayer(this);
-		}
-
-		void _DependencyLayerInternal.MarkDisposed()
-		{
-			_disposed = true;
-		}
-
-		IDisposableLayer _DependencyLayerInternal.AsDisposable()
-		{
-			return new Disposer(this);
-		}
-
-		// Used to prevent people from randomly calling Dependencies.CurrentLayer.Dispose()
-		// Instead of DependencyLayer implementing IDisposable, this class implements it,
-		// and passes on the call to DependencyLayer. External code can't make a proper
-		// instance of this class in order to call Dispose() (except via reflection)
-		private class Disposer : IDisposableLayer
-		{
-			public MutatingDependencyLayer Layer { get; }
-
-			public bool IsNull => Layer == null;
-			public static readonly Disposer Null = default;
-
-			internal Disposer(MutatingDependencyLayer layer) {
-				this.Layer = layer;
-			}
-
-			public void Dispose() {
-				this.Layer.Dispose();
-			}
 		}
 
 		private class RefEqualityComparer : IEqualityComparer<object>

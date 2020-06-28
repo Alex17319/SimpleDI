@@ -23,7 +23,7 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public InjectFrame Inject<T>(T dependency)
+		public override InjectFrame Inject<T>(T dependency)
 		{
 			addToStack_internal(dependency, typeof(T));
 
@@ -37,7 +37,7 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <param name="toMatchAgainst"></param>
 		/// <returns></returns>
-		public InjectFrame Inject(object dependency, Type toMatchAgainst)
+		public override InjectFrame Inject(object dependency, Type toMatchAgainst)
 		{
 			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
@@ -56,7 +56,7 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public SimultaneousInjectFrame InjectWild<T>(T dependency)
+		public override SimultaneousInjectFrame InjectWild<T>(T dependency)
 			=> injectSimul_internal(ImmutableStack.Create<Type>(), dependency, typeof(T), isWildcard: true);
 
 		/// <summary>
@@ -71,7 +71,7 @@ namespace SimpleDI
 		/// <param name="dependency">The depencency to add. May be null (to block existing dependencies from being accessed)</param>
 		/// <param name="toMatchAgainst"></param>
 		/// <returns></returns>
-		public SimultaneousInjectFrame InjectWild(object dependency, Type toMatchAgainst)
+		public override SimultaneousInjectFrame InjectWild(object dependency, Type toMatchAgainst)
 		{
 			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
@@ -81,14 +81,14 @@ namespace SimpleDI
 
 
 
-		public SimultaneousInjectFrame BeginSimultaneousInject()
+		public override SimultaneousInjectFrame BeginSimultaneousInject()
 		{
 			return new SimultaneousInjectFrame(layer: this);
 		}
 
 
 
-		SimultaneousInjectFrame _DependencyLayerInternal.InjectMoreSimultaneously<T>(
+		internal override SimultaneousInjectFrame InjectMoreSimultaneously<T>(
 			SimultaneousInjectFrame soFar,
 			T dependency,
 			bool isWildcard
@@ -96,7 +96,7 @@ namespace SimpleDI
 			return injectMoreSimultaneously_internal(soFar, dependency, typeof(T), isWildcard);
 		}
 
-		SimultaneousInjectFrame _DependencyLayerInternal.InjectMoreSimultaneously(
+		internal override SimultaneousInjectFrame InjectMoreSimultaneously(
 			SimultaneousInjectFrame soFar,
 			object dependency,
 			Type toMatchAgainst,
@@ -221,7 +221,7 @@ namespace SimpleDI
 
 
 		
-		void _DependencyLayerInternal.CloseInjectFrame(InjectFrame frame)
+		internal override void CloseInjectFrame(InjectFrame frame)
 		{
 			if (frame.layer != this) throw new InjectFrameCloseException(
 				$"Cannot close inject frame as it does not belong to the current dependency layer " +
@@ -237,7 +237,7 @@ namespace SimpleDI
 			uninjectDependency_internal(frame.type, frame.stackLevel);
 		}
 
-		void _DependencyLayerInternal.CloseInjectFrame(SimultaneousInjectFrame frame)
+		internal override void CloseInjectFrame(SimultaneousInjectFrame frame)
 		{
 			if (frame.layer != this) throw new InjectFrameCloseException(
 				$"Cannot close inject frame as it does not belong to the current dependency layer " +
