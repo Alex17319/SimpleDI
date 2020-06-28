@@ -7,6 +7,8 @@ namespace SimpleDI
 		// TODO: Idea: ImmutableDict type layer will throw an exception that has a method
 		// to allow recovery to the current stack level
 		// TODO: Should Dependencies overall also do this?
+		// TODO: MutatingDependencyLayer is also possible to recover, by enumerating through
+		// the dictionary and for each stack removing all entries with too high a stack level.
 
 		/// <summary>
 		/// Fallbacks are used to increase the search space, but will not be modified in any way.
