@@ -72,6 +72,94 @@ namespace SimpleDI
 		//		public void Dispose() => this.Layer.Dispose();
 		//	}
 
+
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// Injects an object that will be returned for all dependency searches
+		/// for any supertype of <paramref name="toMatchAgainst"/>
+		/// </summary>
+		/// <remarks>
+		/// Currently not that efficient - effectively just calls Inject() for every supertype of toMatchAgainst,
+		/// and returns a DependencyFrame that holds all of these types;
+		/// </remarks>
+		/// <param name="dependency">The depencency to add. May be null (to block existing dependencies from being accessed)</param>
+		/// <param name="toMatchAgainst"></param>
+		/// <returns></returns>
+		public abstract SimultaneousInjectFrame InjectWild(object dependency, Type toMatchAgainst);
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
+		public abstract SimultaneousInjectFrame InjectWild<T>(T dependency);
+
+		internal abstract SimultaneousInjectFrame InjectMoreSimultaneously<T>(SimultaneousInjectFrame soFar, T dependency, bool isWildcard);
+		internal abstract SimultaneousInjectFrame InjectMoreSimultaneously(SimultaneousInjectFrame soFar, object dependency, Type toMatchAgainst, bool isWildcard);
+
+		protected abstract InjectFrame InjectInternal(object dependency, Type toMatchAgainst);
+
+
+
+		private protected abstract bool StealthTryGet<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
+
+		protected static bool StealthTryGet<T>(DependencyLayer @this, out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+			=> @this.StealthTryGet(out dependency, out stackLevel, useFallbacks, out layerFoundIn);
+
+		private protected abstract bool StealthTryGetOuter<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
+
+		protected static bool StealthTryGetOuter<TOuter>(DependencyLayer @this, object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+			=> @this.StealthTryGetOuter(self, out dependency, out stackLevel, useFallbacks, out layerFoundIn);
+
+		private protected abstract void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch);
+
+
+
+		internal abstract void CloseInjectFrame(InjectFrame frame);
+		internal abstract void CloseInjectFrame(SimultaneousInjectFrame frame);
+
+		private protected abstract void CloseFetchedDependency(object dependency, FetchRecord prevFetch);
+
+
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dependency"></param>
+		/// <returns></returns>
+		public InjectFrame Inject<T>(T dependency)
+		{
+			return InjectInternal(dependency, typeof(T));
+		}
+
+		/// <summary>
+		/// <see langword="[Call inside using()]"></see>
+		/// 
+		/// </summary>
+		/// <param name="dependency"></param>
+		/// <param name="toMatchAgainst"></param>
+		/// <returns></returns>
+		public InjectFrame Inject(object dependency, Type toMatchAgainst)
+		{
+			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
+			RequireDependencySubtypeOf(dependency, toMatchAgainst);
+
+			return InjectInternal(dependency, toMatchAgainst);
+		}
+
+
+		public SimultaneousInjectFrame BeginSimultaneousInject()
+		{
+			return new SimultaneousInjectFrame(layer: this);
+		}
+
+
+
 		/// <summary>
 		///	<see langword="[Call inside using()]"></see>
 		///	
@@ -352,63 +440,6 @@ namespace SimpleDI
 		}
 
 
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="dependency"></param>
-		/// <returns></returns>
-		public InjectFrame Inject<T>(T dependency)
-		{
-			return InjectInternal(dependency, typeof(T));
-		}
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <param name="dependency"></param>
-		/// <param name="toMatchAgainst"></param>
-		/// <returns></returns>
-		public InjectFrame Inject(object dependency, Type toMatchAgainst)
-		{
-			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
-			RequireDependencySubtypeOf(dependency, toMatchAgainst);
-
-			return InjectInternal(dependency, toMatchAgainst);
-		}
-
-
-		public SimultaneousInjectFrame BeginSimultaneousInject()
-		{
-			return new SimultaneousInjectFrame(layer: this);
-		}
-
-		protected abstract InjectFrame InjectInternal(object dependency, Type toMatchAgainst);
-
-		public abstract SimultaneousInjectFrame InjectWild(object dependency, Type toMatchAgainst);
-		public abstract SimultaneousInjectFrame InjectWild<T>(T dependency);
-
-		internal abstract SimultaneousInjectFrame InjectMoreSimultaneously<T>(SimultaneousInjectFrame soFar, T dependency, bool isWildcard);
-		internal abstract SimultaneousInjectFrame InjectMoreSimultaneously(SimultaneousInjectFrame soFar, object dependency, Type toMatchAgainst, bool isWildcard);
-
-		private protected abstract bool StealthTryGet<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
-		private protected abstract bool StealthTryGetOuter<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
-
-		protected static bool StealthTryGet<T>(DependencyLayer @this, out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-			=> @this.StealthTryGet(out dependency, out stackLevel, useFallbacks, out layerFoundIn);
-
-		protected static bool StealthTryGetOuter<TOuter>(DependencyLayer @this, object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-			=> @this.StealthTryGetOuter(self, out dependency, out stackLevel, useFallbacks, out layerFoundIn);
-
-		private protected abstract void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch);
-
-		internal abstract void CloseInjectFrame(InjectFrame frame);
-		internal abstract void CloseInjectFrame(SimultaneousInjectFrame frame);
-
-		private protected abstract void CloseFetchedDependency(object dependency, FetchRecord prevFetch);
 
 		protected static void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
 		{
