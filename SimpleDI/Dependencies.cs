@@ -23,10 +23,10 @@ namespace SimpleDI
 		public static SafeDisposeExceptionsRegion SafeDisposeExceptions()
 			=> DisposeExceptionsManager.SafeDisposeExceptions();
 
-		public static IDisposableLayer NewLayer()
+		public static DependencyLayer.Disposer NewLayer()
 		{
 			_currentLayer = new MutatingDependencyLayer(fallback: CurrentLayer);
-			return _currentLayer.AsDisposable();
+			return new DependencyLayer.Disposer(_currentLayer);
 		}
 
 		internal static void CloseLayer(DependencyLayer layer)

@@ -14,7 +14,7 @@ using SimpleDI.DisposeExceptions;
 
 namespace SimpleDI
 {
-	public partial class MutatingDependencyLayer : DependencyLayer
+	public sealed partial class MutatingDependencyLayer : DependencyLayer
 	{
 		// For future improvement: Maybe try to implement wildcard dependencies more efficiently (wildcard = returned
 		// when any parent class/interface is requested, rather than just when exactly the correct type is requested).
@@ -40,23 +40,6 @@ namespace SimpleDI
 		internal MutatingDependencyLayer(DependencyLayer fallback) : base(fallback) { }
 
 
-
-		private static void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
-		{
-			if (dependency != null && !type.IsInstanceOfType(dependency)) throw new ArgumentTypeException(
-				$"Cannot add {dependencyMoniker} as object is of type '{dependency.GetType().FullName}' " +
-				$"and is not an instance of provided match type {type.FullName}."
-			);
-		}
-
-		private class RefEqualityComparer : IEqualityComparer<object>
-		{
-			public RefEqualityComparer() { }
-
-			public new bool Equals(object x, object y) => ReferenceEquals(x, y);
-
-			public int GetHashCode(object obj) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
-		}
 
 		/// <summary>
 		/// Compares by stack level only

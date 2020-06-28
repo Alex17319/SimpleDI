@@ -14,34 +14,10 @@ using SimpleDI.DisposeExceptions;
 
 namespace SimpleDI
 {
-	public partial class MutatingDependencyLayer
+	public sealed partial class MutatingDependencyLayer
 	{
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="dependency"></param>
-		/// <returns></returns>
-		public override InjectFrame Inject<T>(T dependency)
+		protected override InjectFrame InjectInternal(object dependency, Type toMatchAgainst)
 		{
-			addToStack_internal(dependency, typeof(T));
-
-			return new InjectFrame(this, stackLevel++, typeof(T));
-		}
-
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <param name="dependency"></param>
-		/// <param name="toMatchAgainst"></param>
-		/// <returns></returns>
-		public override InjectFrame Inject(object dependency, Type toMatchAgainst)
-		{
-			if (toMatchAgainst == null) throw new ArgumentNullException(nameof(toMatchAgainst));
-			RequireDependencySubtypeOf(dependency, toMatchAgainst);
-
 			addToStack_internal(dependency, toMatchAgainst);
 
 			return new InjectFrame(this, stackLevel++, toMatchAgainst);
@@ -77,13 +53,6 @@ namespace SimpleDI
 			RequireDependencySubtypeOf(dependency, toMatchAgainst);
 
 			return injectSimul_internal(ImmutableStack.Create<Type>(), dependency, toMatchAgainst, isWildcard: true);
-		}
-
-
-
-		public override SimultaneousInjectFrame BeginSimultaneousInject()
-		{
-			return new SimultaneousInjectFrame(layer: this);
 		}
 
 
@@ -223,6 +192,8 @@ namespace SimpleDI
 		
 		internal override void CloseInjectFrame(InjectFrame frame)
 		{
+			if (frame.IsNull) return;
+
 			if (frame.layer != this) throw new InjectFrameCloseException(
 				$"Cannot close inject frame as it does not belong to the current dependency layer " +
 				$"(current layer = '{this}', {nameof(frame)}.{nameof(InjectFrame.layer)} = '{frame.layer}')"
@@ -239,6 +210,8 @@ namespace SimpleDI
 
 		internal override void CloseInjectFrame(SimultaneousInjectFrame frame)
 		{
+			if (frame.IsEmpty) return;
+
 			if (frame.layer != this) throw new InjectFrameCloseException(
 				$"Cannot close inject frame as it does not belong to the current dependency layer " +
 				$"(current layer = '{this}', {nameof(frame)}.{nameof(InjectFrame.layer)} = '{frame.layer}')"

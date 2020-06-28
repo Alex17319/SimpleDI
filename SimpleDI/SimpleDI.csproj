@@ -60,7 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DependencyLayer.cs" />
-    <Compile Include="IDisposableLayer.cs" />
+    <Compile Include="RefEqualityComparer.cs" />
     <Compile Include="TryGet\Logic.cs" />
     <Compile Include="Utility Classes\ArgumentTypeException.cs" />
     <Compile Include="Dependencies.cs" />
