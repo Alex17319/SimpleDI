@@ -16,7 +16,7 @@ namespace SimpleDI
 	public struct InjectFrame : IDisposable
 	{
 		internal readonly DependencyLayer layer;
-		internal readonly int stackLevel;
+		internal readonly int parentStackLevel;
 		internal readonly Type type;
 
 		public bool IsNull => this.type == null;
@@ -24,19 +24,19 @@ namespace SimpleDI
 
 		private bool _disposed;
 
-		internal InjectFrame(DependencyLayer layer, int stackLevel, Type type)
+		internal InjectFrame(DependencyLayer layer, int parentStackLevel, Type type)
 		{
-			if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), "Cannot be negative.");
+			if (parentStackLevel < 0) throw new ArgumentOutOfRangeException(nameof(parentStackLevel), "Cannot be negative.");
 
 			this.layer = layer ?? throw new ArgumentNullException(nameof(layer));
-			this.stackLevel = stackLevel;
+			this.parentStackLevel = parentStackLevel;
 			this.type = type ?? throw new ArgumentNullException(nameof(type));
 			this._disposed = false;
 		}
 
 		internal SimultaneousInjectFrame asSimultaneous() => new SimultaneousInjectFrame(
 			this.layer,
-			this.stackLevel,
+			this.parentStackLevel,
 			ImmutableStack.Create(this.type)
 		);
 

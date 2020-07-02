@@ -396,6 +396,14 @@ namespace SimpleDI
 		/// </exception>
 		public FetchFrame TryFetchOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
 		{
+			if (self == null) throw new ArgumentNullException(nameof(self));
+
+			if (self.GetType().IsValueType) throw new ArgumentTypeException(
+				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
+				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
+				nameof(self)
+			);
+
 			int stackLevelBeforeFetch = this.CurrentStackLevel;
 
 			if (!this.tryFetchOuterInternal(
@@ -420,14 +428,6 @@ namespace SimpleDI
 
 		private bool tryFetchOuterInternal<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 		{
-			if (self == null) throw new ArgumentNullException(nameof(self));
-
-			if (self.GetType().IsValueType) throw new ArgumentTypeException(
-				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
-				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
-				nameof(self)
-			);
-
 			// Try to find a fetch record locally
 			// If we can't, then try to use fallbacks if possible, calling the current method recursively, and return
 			if (!this.TryGetFromFetchRecords(self, out FetchRecord mostRecentFetch))

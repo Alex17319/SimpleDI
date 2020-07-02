@@ -16,7 +16,7 @@ namespace SimpleDI
 	public struct SimultaneousInjectFrame : IDisposable
 	{
 		internal readonly DependencyLayer layer;
-		internal readonly int stackLevel;
+		internal readonly int parentStackLevel;
 		internal readonly ImmutableStack<Type> types;
 
 		public bool IsEmpty => this.types == null;
@@ -27,15 +27,15 @@ namespace SimpleDI
 		internal SimultaneousInjectFrame(DependencyLayer layer)
 		{
 			this.layer = layer ?? throw new ArgumentNullException(nameof(layer));
-			this.stackLevel = default;
+			this.parentStackLevel = default;
 			this.types = null;
 			this._disposed = false;
 		}
 
-		internal SimultaneousInjectFrame(DependencyLayer layer, int stackLevel, ImmutableStack<Type> types)
+		internal SimultaneousInjectFrame(DependencyLayer layer, int parentStackLevel, ImmutableStack<Type> types)
 		{
 			if (layer == null) throw new ArgumentNullException(nameof(layer));
-			if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), "Cannot be negative.");
+			if (parentStackLevel < 0) throw new ArgumentOutOfRangeException(nameof(parentStackLevel), "Cannot be negative.");
 			if (types == null) throw new ArgumentNullException(nameof(types));
 
 			int i = 0;
@@ -45,7 +45,7 @@ namespace SimpleDI
 			}
 
 			this.layer = layer;
-			this.stackLevel = stackLevel;
+			this.parentStackLevel = parentStackLevel;
 			this.types = types;
 			this._disposed = false;
 		}
@@ -55,7 +55,7 @@ namespace SimpleDI
 			? this
 			: throw new InvalidOperationException(
 				$"Current {nameof(SimultaneousInjectFrame)} has {nameof(layer)} == null, that is, " +
-				$"it is not associated with any {nameof(MutatingDependencyLayer)} in order to perform more simultaneous injections."
+				$"it is not associated with any {nameof(DependencyLayer)} in order to perform more simultaneous injections."
 			);
 
 		/// <summary>

@@ -63,6 +63,9 @@ namespace SimpleDI
 			throw new NotImplementedException();
 		}
 
+		private protected override bool TryGetFromFetchRecords(object self, out FetchRecord mostRecentFetch)
+			=> this._stack.Peek().fetchRecords.TryGetValue(self, out mostRecentFetch);
+
 		private protected override bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 			=> _stack.Peek().dependencies.TryGetValue(typeof(T), out StackedDependency dep)
 			? Logic.Succeed(
@@ -80,46 +83,29 @@ namespace SimpleDI
 			))
 			: Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
-		private protected override bool StealthTryFetchOuter<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-		{
-			if (self == null) throw new ArgumentNullException(nameof(self));
-
-			if (self.GetType().IsValueType) throw new ArgumentTypeException(
-				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
-				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
-				nameof(self)
-			);
-
-			// Try to find a fetch record locally
-			// If we can't, then try to use fallbacks if possible, calling the current method recursively, and return
-			if (!this._stack.Peek().fetchRecords.TryGetValue(self, out FetchRecord mostRecentFetch))
-			{
-				if (!useFallbacks || this.Fallback == null) throw new ArgumentException(
-					$"No record is available of a dependency fetch having been performed for object '{self}' " +
-					$"(of type '{self.GetType().FullName}'). " +
-					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
-				);
-
-				Logic.SucceedIf(DependencyLayer.StealthTryFetchOuter(
-					this.Fallback,
-					self,
-					out dependency,
-					out stackLevel,
-					useFallbacks,
-					out layerFoundIn
-				));
-			}
-
-			// The fetch record must have been found locally if this point is reached
-			// If it was in a fallback, then that was found using this method recursively, and we've already returned.
+		private protected override bool StealthTryFetchOuter<TOuter>(
+			int prevFetchStackLevelFoundAt,
+			out TOuter dependency,
+			out int stackLevel,
+			bool useFallbacks,
+			out DependencyLayer layerFoundIn
+		) {
+			Debug.Assert(prevFetchStackLevelFoundAt >= 1);
 
 			// Try to find a dependency of type TOuter locally
 			// If we can't, then try to use fallbacks if possible, and return whatever we find
 
-			StackFrame frameFetchedFrom = StackFrame.Null; //TODO Fix issues here after fixing same in MutatingDependencyLayer
-			if (mostRecentFetch.stackLevelFoundAt >= 0 && mostRecentFetch.stackLevelFoundAt < this.CurrentStackLevel) {
-				frameFetchedFrom = this._stack[mostRecentFetch.stackLevelFoundAt];
-			}
+			// If the previous fetch found a dependency that's in the currently available stack, get
+			// the place one deeper into the stack.
+			// If not, i.e. the current stack is too short, then just use the end of the stack as
+			// the place to start searching from (TODO: Should we throw an exception instead?)
+			// If the stack is empty, have to fallback to other layers.
+			StackFrame frameFetchedFrom =
+				prevFetchStackLevelFoundAt - 1 < this.CurrentStackLevel
+				? this._stack[prevFetchStackLevelFoundAt - 1]
+				: this._stack.Count > 0
+				? this._stack.Peek()
+				: StackFrame.Null;
 
 			if (!frameFetchedFrom.IsNull && frameFetchedFrom.dependencies.TryGetValue(typeof(TOuter), out var dep))
 			{
@@ -152,7 +138,7 @@ namespace SimpleDI
 
 			_stack.Push(_stack.Peek().WithFetchRecord(
 				dependency,
-				new FetchRecord(layerFoundIn, stackLevelFoundAt, this.currentStackLevel)
+				new FetchRecord(layerFoundIn, stackLevelFoundAt)
 			));
 		}
 

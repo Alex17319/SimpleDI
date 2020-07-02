@@ -17,6 +17,9 @@ namespace SimpleDI
 {
 	public sealed partial class MutatingDependencyLayer
 	{
+		private protected override bool TryGetFromFetchRecords(object self, out FetchRecord mostRecentFetch)
+			=> this._fetchRecords.TryGetValue(self, out mostRecentFetch);
+
 		private protected override bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 		{
 			if (!this._dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {

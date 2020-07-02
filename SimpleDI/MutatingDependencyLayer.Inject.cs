@@ -71,11 +71,11 @@ namespace SimpleDI
 			Type toMatchAgainst,
 			bool isWildcard
 		) {
-			if (currentStackLevel != soFar.stackLevel + 1) throw new InvalidDIStateException(
+			if (currentStackLevel != soFar.parentStackLevel + 1) throw new InvalidDIStateException(
 				$"Cannot inject another dependency simultaneously as stack level has changed " +
 				$"(object dependency = '{dependency}', Type toMatchAgainst = '{toMatchAgainst}', "+
 				$"current stack level = '{currentStackLevel}', " +
-				$"required stack level (soFar.stackLevel + 1) = '{soFar.stackLevel + 1}'"
+				$"required stack level (soFar.parentStackLevel + 1) = '{soFar.parentStackLevel + 1}'"
 			);
 
 			currentStackLevel--;
@@ -143,14 +143,14 @@ namespace SimpleDI
 
 		private void addToStack_internal(object dependency, Type toMatchAgainst)
 		{
-			var toPush = new StackedDependency(currentStackLevel, dependency);
+			var toPush = new StackedDependency(currentStackLevel + 1, dependency);
 
 			if (_dependencyStacks.TryGetValue(toMatchAgainst, out var stack))
 			{
-				if (stack.Peek().stackLevel == currentStackLevel) throw new InvalidOperationException(
+				if (stack.Peek().stackLevel == currentStackLevel + 1) throw new InvalidOperationException(
 					$"Cannot inject dependency against type '{toMatchAgainst.FullName}' " +
 					$"as there is already a dependency present against the same type at the current stack level " +
-					$"(stack level = '{currentStackLevel}'). Most likely cause: calling a method to inject multiple " +
+					$"(stack level = '{currentStackLevel + 1}'). Most likely cause: calling a method to inject multiple " +
 					$"dependencies at the same time (i.e. at the same stack level), but requesting to add two or " +
 					$"more dependencies against the same type, or more than one wildcard dependency. This would " +
 					$"result in an ambiguity for what object should be returned when the dependencies are fetched " +
@@ -181,13 +181,13 @@ namespace SimpleDI
 				$"(current layer = '{this}', {nameof(frame)}.{nameof(InjectFrame.layer)} = '{frame.layer}')"
 			);
 
-			if (frame.stackLevel != currentStackLevel) throw new InjectFrameCloseException(
-				$"Cannot close inject frame with stack level '{frame.stackLevel}' " +
-				$"as it is different to the current stack level '{currentStackLevel}'.",
+			if (frame.parentStackLevel + 1 != currentStackLevel) throw new InjectFrameCloseException(
+				$"Cannot close inject frame with parent stack level '{frame.parentStackLevel}' " +
+				$"as it is not exactly one less than the current stack level '{currentStackLevel}'.",
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
-			uninjectDependency_internal(frame.type, frame.stackLevel);
+			uninjectDependency_internal(frame.type, frame.parentStackLevel);
 		}
 
 		internal override void CloseInjectFrame(SimultaneousInjectFrame frame)
@@ -199,15 +199,15 @@ namespace SimpleDI
 				$"(current layer = '{this}', {nameof(frame)}.{nameof(InjectFrame.layer)} = '{frame.layer}')"
 			);
 
-			if (frame.stackLevel != currentStackLevel) throw new InjectFrameCloseException(
-				$"Cannot close frame with stack level '{frame.stackLevel}' " +
-				$"as it is different to the current stack level '{currentStackLevel}'.",
+			if (frame.parentStackLevel + 1 != currentStackLevel) throw new InjectFrameCloseException(
+				$"Cannot close inject frame with parent stack level '{frame.parentStackLevel}' " +
+				$"as it is not exactly one less than the current stack level '{currentStackLevel}'.",
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
 			foreach (Type t in frame.types)
 			{
-				uninjectDependency_internal(t, frame.stackLevel);
+				uninjectDependency_internal(t, frame.parentStackLevel);
 			}
 		}
 

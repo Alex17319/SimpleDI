@@ -22,6 +22,12 @@ namespace SimpleDI
 
 		internal FetchRecord(DependencyLayer layerFoundAt, int stackLevelFoundAt)
 		{
+			if (stackLevelFoundAt < 0) throw new ArgumentOutOfRangeException(
+				nameof(stackLevelFoundAt),
+				stackLevelFoundAt,
+				"Cannot be negative"
+			);
+
 			this.layerFoundAt = layerFoundAt ?? throw new ArgumentNullException(nameof(layerFoundAt));
 			this.stackLevelFoundAt = stackLevelFoundAt;
 		}
