@@ -33,15 +33,16 @@ namespace SimpleDI
 			}
 
 			var dInfo = stack.Peek();
-			dependency = (T)dInfo.dependency;
 
 			// Fail if a null has been added to hide earlier dependencies
-			if (dependency == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+			if (dInfo.dependency == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
 			// Otherwise, succeed
-			stackLevel = dInfo.stackLevel;
-			layerFoundIn = this;
-			return true;
+			return Logic.Succeed(
+				out dependency, (T)dInfo.dependency,
+				out stackLevel, dInfo.stackLevel,
+				out layerFoundIn, this
+			);
 		}
 
 		private protected override bool StealthTryFetchOuter<TOuter>(
@@ -127,10 +128,11 @@ namespace SimpleDI
 				// Fail if a null has been added to hide earlier dependencies
 				if (outerInfo.dependency == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
-				dependency = (TOuter)outerInfo.dependency;
-				stackLevel = outerInfo.stackLevel;
-				layerFoundIn = this;
-				return true;
+				return Logic.Succeed(
+					out dependency, (TOuter)outerInfo.dependency,
+					out stackLevel, outerInfo.stackLevel,
+					out layerFoundIn, this
+				);
 			}
 
 			// But otherwise, we need to fall back to previous layers (if we can)
