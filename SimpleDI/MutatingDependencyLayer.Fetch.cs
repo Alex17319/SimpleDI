@@ -46,57 +46,6 @@ namespace SimpleDI
 		}
 
 		private protected override bool StealthTryFetchOuter<TOuter>(
-			object self,
-			out TOuter dependency,
-			out int stackLevel,
-			bool useFallbacks,
-			out DependencyLayer layerFoundIn
-		) {
-			if (self == null) throw new ArgumentNullException(nameof(self));
-
-			if (self.GetType().IsValueType) throw new ArgumentTypeException(
-				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
-				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
-				nameof(self)
-			);
-
-			// Try to find a fetch record locally
-			// If we can't, then try to use fallbacks if possible, calling the current method recursively, and return
-			if (!this._fetchRecords.TryGetValue(self, out FetchRecord mostRecentFetch))
-			{
-				if (!useFallbacks || this.Fallback == null) throw new ArgumentException(
-					$"No record is available of a dependency fetch having been performed for object '{self}' " +
-					$"(of type '{self.GetType().FullName}'). " +
-					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
-				);
-
-				return Logic.SucceedIf(DependencyLayer.StealthTryFetchOuter(
-					this.Fallback,
-					self,
-					out dependency,
-					out stackLevel,
-					useFallbacks,
-					out layerFoundIn
-				));
-			}
-			
-			// The fetch record must have been found locally if this point is reached
-			// If it was in a fallback, then that was found using this method recursively, and we've already returned.
-			
-			// However, that isn't the same thing as it representing a local dependency having been fetched,
-			// just that the record is stored locally. Either way, go to the layer from which the dependency
-			// was fetched, and from there search for outer dependencies
-			return Logic.SucceedIf(DependencyLayer.StealthTryFetchOuter(
-				mostRecentFetch.layerFoundAt,
-				mostRecentFetch.stackLevelFoundAt,
-				out dependency,
-				out stackLevel,
-				useFallbacks,
-				out layerFoundIn
-			));
-		}
-
-		private protected override bool StealthTryFetchOuter<TOuter>(
 			int prevFetchStackLevelFoundAt,
 			out TOuter dependency,
 			out int stackLevel,

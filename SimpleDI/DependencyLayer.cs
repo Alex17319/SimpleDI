@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SimpleDI.TryGet;
+using System;
 
 namespace SimpleDI
 {
@@ -105,21 +106,19 @@ namespace SimpleDI
 		protected abstract InjectFrame InjectInternal(object dependency, Type toMatchAgainst);
 
 
+		private protected abstract bool TryGetFromFetchRecords(object self, out FetchRecord mostRecentFetch);
 
 		private protected abstract bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
 
 		protected static bool StealthTryFetch<T>(DependencyLayer @this, out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 			=> @this.StealthTryFetch(out dependency, out stackLevel, useFallbacks, out layerFoundIn);
 
-		private protected abstract bool StealthTryFetchOuter<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
-
-		protected static bool StealthTryFetchOuter<TOuter>(DependencyLayer @this, object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-			=> @this.StealthTryFetchOuter(self, out dependency, out stackLevel, useFallbacks, out layerFoundIn);
-
+		/// <summary>
+		/// Given that a previous fetch found some dependency in the current layer at a particular stack level,
+		/// this method looks for dependencies in outer stack levels (stricly not equal), and optionally
+		/// fallback layers as well.
+		/// </summary>
 		private protected abstract bool StealthTryFetchOuter<TOuter>(int prevFetchStackLevelFoundAt, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
-
-		protected static bool StealthTryFetchOuter<TOuter>(DependencyLayer @this, int prevFetchStackLevelFoundAt, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-			=> @this.StealthTryFetchOuter(prevFetchStackLevelFoundAt, out dependency, out stackLevel, useFallbacks, out layerFoundIn);
 
 		private protected abstract void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch);
 
@@ -397,7 +396,7 @@ namespace SimpleDI
 		{
 			int stackLevelBeforeFetch = this.StackLevel;
 
-			if (!this.StealthTryFetchOuter(
+			if (!this.tryFetchOuterInternal(
 				self,
 				out outerDependency,
 				out int outerStackLevel,
@@ -415,6 +414,50 @@ namespace SimpleDI
 			this.AddToFetchRecord(outerDependency, layerOuterFoundIn, outerStackLevel, out FetchRecord prevOuterFetch);
 
 			return new FetchFrame(layerSearchingFrom: this, outerDependency, prevOuterFetch);
+		}
+
+		private bool tryFetchOuterInternal<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+		{
+			if (self == null) throw new ArgumentNullException(nameof(self));
+
+			if (self.GetType().IsValueType) throw new ArgumentTypeException(
+				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
+				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
+				nameof(self)
+			);
+
+			// Try to find a fetch record locally
+			// If we can't, then try to use fallbacks if possible, calling the current method recursively, and return
+			if (!this.TryGetFromFetchRecords(self, out FetchRecord mostRecentFetch))
+			{
+				if (!useFallbacks || this.Fallback == null) throw new ArgumentException(
+					$"No record is available of a dependency fetch having been performed for object '{self}' " +
+					$"(of type '{self.GetType().FullName}'). " +
+					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
+				);
+
+				return Logic.SucceedIf(this.Fallback.tryFetchOuterInternal(
+					self,
+					out dependency,
+					out stackLevel,
+					useFallbacks,
+					out layerFoundIn
+				));
+			}
+			
+			// The fetch record must have been found locally if this point is reached
+			// If it was in a fallback, then that was found using this method recursively, and we've already returned.
+			
+			// However, that isn't the same thing as it representing a local dependency having been fetched,
+			// just that the record is stored locally. Either way, go to the layer from which the dependency
+			// was fetched, and from there search for outer dependencies
+			return Logic.SucceedIf(mostRecentFetch.layerFoundAt.StealthTryFetchOuter(
+				mostRecentFetch.stackLevelFoundAt,
+				out dependency,
+				out stackLevel,
+				useFallbacks,
+				out layerFoundIn
+			));
 		}
 
 
