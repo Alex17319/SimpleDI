@@ -23,16 +23,21 @@ namespace SimpleDI.TryGet
 	/// bool TryGet(out int thing1, out string thing2) {
 	///		if (foo) return Fail(out thing1, out thing2);
 	///		
-	///		if (blah) return Succeed(out thing1, 42, out thing2, "asdf");
-	///		else return Succeed(someFunctionThatSetsTheValues(out thing1, out thing2));
+	///		if (bar) return Succeed(out thing1, 42, out thing2, "asdf");
+	///		
+	///		if (baz) return SucceedIf(tryDoSomething(out thing1, out thing2))
+	///		
+	///		return Succeed(someFunctionThatSetsTheValues(out thing1, out thing2));
 	///	}
 	///	
 	///	// Or even (looks bad first time but its an easy pattern to get used to reading):
 	///	bool TryGet(out int thing1, out string thing2)
 	///		=> foo                                                            // if foo
 	///		? Fail(out thing1, out thing2)                                    // fail
-	///		: blah                                                            // if blah
+	///		: bar                                                             // if bar
 	///		? Succeed(out thing1, 42, out thing2, "asdf")                     // succeed
+	///		: baz                                                             // if baz
+	///		? SucceedIf(tryDoSomething(out thing1, out thing2))               // succeed if something else succeeds
 	///		: Succeed(someFunctionThatSetsTheValues(out thing1, out thing2)); // else succeed
 	///		
 	/// // Unfortunately, if someFunctionThatSetsTheValues() returns void, we have to do:
@@ -40,14 +45,15 @@ namespace SimpleDI.TryGet
 	///		if (foo) return Fail(out thing1, out thing2);
 	///		
 	///		if (blah) return Succeed(out thing1, 42, out thing2, "asdf");
-	///		else {
-	///			someFunctionThatSetsTheValues(out thing1, out thing2);
-	///			return Succeed();
-	///		}
+	///		
+	///		if (baz) return SucceedIf(tryDoSomething(out thing1, out thing2))
+	///		
+	///		someFunctionThatSetsTheValues(out thing1, out thing2);
+	///		return Succeed();
 	///	}
 	///	// And the second version won't work anymore.
-	///	// Might possibly be able to use delegates to fix this, but the idea
-	///	// here is to incur no perfomance penalty (after compiling), so no.
+	///	// Might possibly be able to use delegates to work around this, but the idea
+	///	// here is to incur no perfomance penalty, so shouldn't do that.
 	///	</code>
 	/// </remarks>
 	public static class Logic
@@ -56,10 +62,13 @@ namespace SimpleDI.TryGet
 		public static bool Fail() => false;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool Succeed() { return true; }
+		public static bool Succeed() => true;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool Succeed<TIgnored>(TIgnored outSetter) { return true; }
+		public static bool Succeed<TIgnored>(TIgnored outSetter) => true;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool SucceedIf(bool succeed) => succeed;
 
 		// (use alt + click & drag, or alt + shift + arrow keys, to make a rectangular selection & edit)
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Fail<T1                                                                   >(out T1 o1                                                                                                                                                                                   ) { o1 = default;                                                                                                                                                                                                                          return false; }
