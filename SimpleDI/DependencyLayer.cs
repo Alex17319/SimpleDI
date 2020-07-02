@@ -106,15 +106,15 @@ namespace SimpleDI
 
 
 
-		private protected abstract bool StealthTryGet<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
+		private protected abstract bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
 
-		protected static bool StealthTryGet<T>(DependencyLayer @this, out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-			=> @this.StealthTryGet(out dependency, out stackLevel, useFallbacks, out layerFoundIn);
+		protected static bool StealthTryFetch<T>(DependencyLayer @this, out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+			=> @this.StealthTryFetch(out dependency, out stackLevel, useFallbacks, out layerFoundIn);
 
-		private protected abstract bool StealthTryGetOuter<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
+		private protected abstract bool StealthTryFetchOuter<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
 
-		protected static bool StealthTryGetOuter<TOuter>(DependencyLayer @this, object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-			=> @this.StealthTryGetOuter(self, out dependency, out stackLevel, useFallbacks, out layerFoundIn);
+		protected static bool StealthTryFetchOuter<TOuter>(DependencyLayer @this, object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+			=> @this.StealthTryFetchOuter(self, out dependency, out stackLevel, useFallbacks, out layerFoundIn);
 
 		private protected abstract void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch);
 
@@ -172,9 +172,9 @@ namespace SimpleDI
 		/// <exception cref="DependencyNotFoundException">
 		/// No dependency against type <typeparamref name="T"/> is available.
 		/// </exception>
-		public FetchFrame Get<T>(out T dependency, bool useFallbacks)
+		public FetchFrame Fetch<T>(out T dependency, bool useFallbacks)
 		{
-			FetchFrame result = TryGet(out dependency, out bool found, useFallbacks);
+			FetchFrame result = TryFetch(out dependency, out bool found, useFallbacks);
 			if (!found) throw new DependencyNotFoundException(typeof(T));
 			return result;
 		}
@@ -186,10 +186,10 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public FetchFrame GetOrNull<T>(out T dependency, bool useFallbacks)
+		public FetchFrame FetchOrNull<T>(out T dependency, bool useFallbacks)
 			where T : class
 		{
-			FetchFrame result = TryGet(out dependency, out bool found, useFallbacks);
+			FetchFrame result = TryFetch(out dependency, out bool found, useFallbacks);
 			if (!found) dependency = null;
 			return result;
 		}
@@ -198,15 +198,15 @@ namespace SimpleDI
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches a dependency of type T (not nullable), and returns it (or else null) via a nullable T? parameter.
 		/// <para/>
-		/// See <see cref="TryGet{T}(out T, out bool, bool)"/>
+		/// See <see cref="TryFetch{T}(out T, out bool, bool)"/>
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public FetchFrame GetOrNull<T>(out T? dependency, bool useFallbacks)
+		public FetchFrame FetchOrNull<T>(out T? dependency, bool useFallbacks)
 			where T : struct
 		{
-			FetchFrame result = TryGet(out T dep, out bool found, useFallbacks);
+			FetchFrame result = TryFetch(out T dep, out bool found, useFallbacks);
 			dependency = found ? dep : (T?)null;
 			return result;
 		}
@@ -215,7 +215,7 @@ namespace SimpleDI
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches a dependency of type T? (nullable), and returns it (or else null) via a nullable T? parameter
 		/// <para/>
-		/// See <see cref="TryGet{T}(out T, out bool, bool)"/>
+		/// See <see cref="TryFetch{T}(out T, out bool, bool)"/>
 		/// </summary>
 		/// <remarks>
 		/// Note that null nullable instances (eg new int?()) are boxed to true null pointers (and then treated
@@ -225,10 +225,10 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public FetchFrame GetNullableOrNull<T>(out T? dependency, bool useFallbacks)
+		public FetchFrame FetchNullableOrNull<T>(out T? dependency, bool useFallbacks)
 			 where T : struct
 		{
-			FetchFrame result = TryGet(out dependency, out bool found, useFallbacks);
+			FetchFrame result = TryFetch(out dependency, out bool found, useFallbacks);
 			if (!found) dependency = null;
 			return result;
 		}
@@ -241,9 +241,9 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <param name="found"></param>
 		/// <returns></returns>
-		public FetchFrame TryGet<T>(out T dependency, out bool found, bool useFallbacks)
+		public FetchFrame TryFetch<T>(out T dependency, out bool found, bool useFallbacks)
 		{
-			if (!this.StealthTryGet(
+			if (!this.StealthTryFetch(
 				out dependency,
 				out int stackLevel,
 				useFallbacks,
@@ -271,7 +271,7 @@ namespace SimpleDI
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches an outer dependency, or throws a <see cref="DependencyNotFoundException"/> if it could not be found.
 		/// <para/>
-		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
+		/// See <see cref="TryFetchOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
 		/// </summary>
 		/// <typeparam name="TOuter"></typeparam>
 		/// <param name="self"></param>
@@ -285,9 +285,9 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame GetOuter<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
+		public FetchFrame FetchOuter<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
 		{
-			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found, useFallbacks);
+			FetchFrame result = TryFetchOuter(self, out outerDependency, out bool found, useFallbacks);
 			if (!found) throw new DependencyNotFoundException(typeof(TOuter));
 			return result;
 		}
@@ -296,7 +296,7 @@ namespace SimpleDI
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches an outer dependency, or returns null if it could not be found.
 		/// <para/>
-		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
+		/// See <see cref="TryFetchOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
 		/// </summary>
 		/// <typeparam name="TOuter"></typeparam>
 		/// <param name="self"></param>
@@ -307,10 +307,10 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
+		public FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
 			where TOuter : class
 		{
-			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found, useFallbacks);
+			FetchFrame result = TryFetchOuter(self, out outerDependency, out bool found, useFallbacks);
 			if (!found) outerDependency = null;
 			return result;
 		}
@@ -319,7 +319,7 @@ namespace SimpleDI
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches an outer dependency of type T (not nullable), and returns it (or else null) via a nullable T? parameter.
 		/// <para/>
-		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
+		/// See <see cref="TryFetchOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
 		/// </summary>
 		/// <typeparam name="TOuter"></typeparam>
 		/// <param name="self"></param>
@@ -330,10 +330,10 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame GetOuterOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
+		public FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
 			where TOuter : struct
 		{
-			FetchFrame result = TryGetOuter(self, out TOuter oDep, out bool found, useFallbacks);
+			FetchFrame result = TryFetchOuter(self, out TOuter oDep, out bool found, useFallbacks);
 			outerDependency = found ? oDep : (TOuter?)null;
 			return result;
 		}
@@ -342,7 +342,7 @@ namespace SimpleDI
 		/// <see langword="[Call inside using()]"></see>
 		/// Fetches an outer dependency of type T? (nullable), and returns it (or else null) via a nullable T? parameter.
 		/// <para/>
-		/// See <see cref="TryGetOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
+		/// See <see cref="TryFetchOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
 		/// </summary>
 		/// <remarks>
 		/// Note that null nullable instances (eg new int?()) are boxed to true null pointers (and then treated
@@ -358,10 +358,10 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame GetOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
+		public FetchFrame FetchOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
 			 where TOuter : struct
 		{
-			FetchFrame result = TryGetOuter(self, out outerDependency, out bool found, useFallbacks);
+			FetchFrame result = TryFetchOuter(self, out outerDependency, out bool found, useFallbacks);
 			if (!found) outerDependency = null;
 			return result;
 		}
@@ -388,9 +388,9 @@ namespace SimpleDI
 		/// <exception cref="ArgumentException">
 		/// There is no record of <paramref name="self"/> having been fetched previously
 		/// </exception>
-		public FetchFrame TryGetOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
+		public FetchFrame TryFetchOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
 		{
-			if (!this.StealthTryGetOuter(
+			if (!this.StealthTryFetchOuter(
 				self,
 				out outerDependency,
 				out int outerStackLevel,

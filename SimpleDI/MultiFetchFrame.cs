@@ -54,14 +54,14 @@ namespace SimpleDI
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
-		/// Fluent inteface to get another dependency - calls <seealso cref="Dependencies.Get{T}(out T)"/>
+		/// Fluent inteface to get another dependency - calls <seealso cref="Dependencies.Fetch{T}(out T)"/>
 		/// and returns a frame that encompasses the combined result
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
 		public MultiFetchFrame And<T>(out T dependency, bool useFallbacks = true)
-			=> Plus(this.layerSearchingFrom.Get(out dependency, useFallbacks));
+			=> Plus(this.layerSearchingFrom.Fetch(out dependency, useFallbacks));
 
 		public void Dispose()
 		{

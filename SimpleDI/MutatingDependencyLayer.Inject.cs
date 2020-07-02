@@ -158,8 +158,8 @@ namespace SimpleDI
 					$"common parent type would cause this ambiguity). Instead, this is disallowed. Consider " +
 					$"injecting the dependencies one at a time so that they have a defined priority order. " +
 					$"Otherwise, if you do need multiple of the same dependency type T to be fetched as a group, " +
-					$"consider using Inject() and Get() with a T[], List<T>, or some other collection. If you need " +
-					$"inner code to both Get() the group and Get() just the first element (for example) then inject" +
+					$"consider using Inject() and Fetch() with a T[], List<T>, or some other collection. If you need " +
+					$"inner code to both Fetch() the group and Fetch() just the first element (for example) then inject" +
 					$"e.g. both the List<T> and the instance of T."
 				);
 				stack.Push(toPush);

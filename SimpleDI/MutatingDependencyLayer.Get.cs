@@ -17,12 +17,12 @@ namespace SimpleDI
 {
 	public sealed partial class MutatingDependencyLayer
 	{
-		private protected override bool StealthTryGet<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+		private protected override bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 		{
 			if (!this._dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {
 				// No stack found, or found stack is empty
 				if (useFallbacks && this.Fallback != null)
-					return DependencyLayer.StealthTryGet(
+					return DependencyLayer.StealthTryFetch(
 						this.Fallback,
 						out dependency,
 						out stackLevel,
@@ -44,7 +44,7 @@ namespace SimpleDI
 			return true;
 		}
 
-		private protected override bool StealthTryGetOuter<TOuter>(
+		private protected override bool StealthTryFetchOuter<TOuter>(
 			object self,
 			out TOuter dependency,
 			out int stackLevel,
@@ -69,7 +69,7 @@ namespace SimpleDI
 					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
 				);
 
-				return DependencyLayer.StealthTryGetOuter(
+				return DependencyLayer.StealthTryFetchOuter(
 					this.Fallback,
 					self,
 					out dependency,
@@ -85,7 +85,7 @@ namespace SimpleDI
 			{
 				if (!useFallbacks || this.Fallback == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 				
-				return DependencyLayer.StealthTryGet(
+				return DependencyLayer.StealthTryFetch(
 					this.Fallback,
 					out dependency,
 					out stackLevel,
@@ -139,7 +139,7 @@ namespace SimpleDI
 			if (!useFallbacks || this.Fallback == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
 			// Fallback to previous layers
-			return DependencyLayer.StealthTryGet(
+			return DependencyLayer.StealthTryFetch(
 				this.Fallback,
 				out dependency,
 				out stackLevel,

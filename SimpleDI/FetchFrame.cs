@@ -38,7 +38,7 @@ namespace SimpleDI
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
-		/// Fluent inteface to fetch another dependency - calls <seealso cref="Dependencies.Get{T}(out T)"/>
+		/// Fluent inteface to fetch another dependency - calls <seealso cref="Dependencies.Fetch{T}(out T)"/>
 		/// and returns a frame that encompasses the combined result
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
