@@ -61,6 +61,7 @@
   <ItemGroup>
     <Compile Include="DependencyLayer.cs" />
     <Compile Include="RefEqualityComparer.cs" />
+    <Compile Include="SafeDependencyLayer.cs" />
     <Compile Include="TryGet\Logic.cs" />
     <Compile Include="Utility Classes\ArgumentTypeException.cs" />
     <Compile Include="Dependencies.cs" />
