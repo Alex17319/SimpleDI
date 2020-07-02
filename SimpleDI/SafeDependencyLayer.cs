@@ -18,7 +18,7 @@ namespace SimpleDI
 	{
 
 
-		ImmutableStack<StackFrame> _stack = ImmutableStack.Create(StackFrame.Base);
+		SearchableStack<StackFrame> _stack = new SearchableStack<StackFrame>() { StackFrame.Base };
 
 		private int currentStackLevel;
 
@@ -57,16 +57,6 @@ namespace SimpleDI
 		}
 
 		internal override SimultaneousInjectFrame InjectMoreSimultaneously(SimultaneousInjectFrame soFar, object dependency, Type toMatchAgainst, bool isWildcard)
-		{
-			throw new NotImplementedException();
-		}
-
-		private protected override void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch)
-		{
-			throw new NotImplementedException();
-		}
-
-		private protected override void CloseFetchedDependency(object dependency, FetchRecord prevFetch)
 		{
 			throw new NotImplementedException();
 		}
@@ -124,9 +114,10 @@ namespace SimpleDI
 			// Try to find a dependency of type TOuter locally
 			// If we can't, then try to use fallbacks if possible, and return whatever we find
 
-			StackFrame frameFetchedFrom = this._stack.ElementAtOrDefault(
-				this.currentStackLevel - mostRecentFetch.stackLevelFoundAt
-			);
+			StackFrame frameFetchedFrom = StackFrame.Null;
+			if (mostRecentFetch.stackLevelFoundAt >= 0 && mostRecentFetch.stackLevelFoundAt < this.currentStackLevel) {
+				frameFetchedFrom = this._stack[this.currentStackLevel - mostRecentFetch.stackLevelFoundAt];
+			}
 
 			if (!frameFetchedFrom.IsNull && frameFetchedFrom.dependencies.TryGetValue(typeof(TOuter), out var dep))
 			{
@@ -149,6 +140,20 @@ namespace SimpleDI
 
 			// Can't use fallbacks either; fail
 			return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+		}
+
+		private protected override void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch)
+		{
+			// No need to return prevFetch here as we're using a stack of immutable dictionaries (so don't
+			// have to put it back in later, just delete the later frames on the stack)
+			prevFetch = FetchRecord.Null;
+
+			_stack.Push(_stack.Peek().WithFetchRecord(dependency, new FetchRecord(layerFoundIn, stackLevelFoundAt)));
+		}
+
+		private protected override void CloseFetchedDependency(object dependency, FetchRecord prevFetch)
+		{
+			throw new NotImplementedException();
 		}
 
 		private struct StackFrame
@@ -185,6 +190,9 @@ namespace SimpleDI
 				this.dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
 				this.fetchRecords = fetchRecords ?? throw new ArgumentNullException(nameof(fetchRecords));
 			}
+
+			public StackFrame WithFetchRecord(object dep, FetchRecord record)
+				=> new StackFrame(this.dependencies, this.fetchRecords.Add(dep, record));
 		}
 	}
 }
