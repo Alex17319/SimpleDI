@@ -247,6 +247,8 @@ namespace SimpleDI
 		/// <returns></returns>
 		public FetchFrame TryFetch<T>(out T dependency, out bool found, bool useFallbacks)
 		{
+			int stackLevelBeforeFetch = this.CurrentStackLevel;
+
 			if (!this.StealthTryFetch(
 				out dependency,
 				out int stackLevel,
@@ -266,7 +268,7 @@ namespace SimpleDI
 			// Must only add to/modify the current layer's records (as we must only modify the current layer in general).
 			this.AddToFetchRecord(dependency, layerFoundIn, stackLevel, out var prevFetch);
 
-			return new FetchFrame(layerSearchingFrom: this, dependency, prevFetch);
+			return new FetchFrame(layerSearchingFrom: this, dependency, prevFetch, stackLevelBeforeFetch);
 		}
 
 
@@ -394,7 +396,7 @@ namespace SimpleDI
 		/// </exception>
 		public FetchFrame TryFetchOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
 		{
-			int stackLevelBeforeFetch = this.StackLevel;
+			int stackLevelBeforeFetch = this.CurrentStackLevel;
 
 			if (!this.tryFetchOuterInternal(
 				self,
@@ -413,7 +415,7 @@ namespace SimpleDI
 			// Now add to the current layer's _fetchRecords that the outer dependency was just fetched
 			this.AddToFetchRecord(outerDependency, layerOuterFoundIn, outerStackLevel, out FetchRecord prevOuterFetch);
 
-			return new FetchFrame(layerSearchingFrom: this, outerDependency, prevOuterFetch);
+			return new FetchFrame(layerSearchingFrom: this, outerDependency, prevOuterFetch, stackLevelBeforeFetch);
 		}
 
 		private bool tryFetchOuterInternal<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
@@ -472,7 +474,10 @@ namespace SimpleDI
 				$"{nameof(frame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{frame.layerSearchingFrom}')"
 			);
 
-			if (frame.)
+			if (frame.stackLevelBeforeFetch != this.CurrentStackLevel - 1)
+			{
+				//TODO
+			}
 
 			CloseFetchedDependency(frame.dependency, frame.prevFetch);
 		}
