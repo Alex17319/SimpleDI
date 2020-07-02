@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SimpleDI.TryGet;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -17,11 +18,7 @@ namespace SimpleDI
 	{
 
 
-		ImmutableStack<StackFrame> _stack = ImmutableStack.Create(new StackFrame(
-			stackLevel: 0,
-			ImmutableDictionary.Create<Type, SearchableStack<StackedDependency>>(),
-			ImmutableDictionary.Create<object, FetchRecord>()
-		));
+		ImmutableStack<StackFrame> _stack = ImmutableStack.Create(StackFrame.Base);
 
 		private int currentStackLevel;
 
@@ -75,35 +72,69 @@ namespace SimpleDI
 		}
 
 		private protected override bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-		{
-			throw new NotImplementedException();
-		}
+			=> _stack.Peek().dependencies.TryGetValue(typeof(T), out StackedDependency dep)
+			? Logic.Succeed(
+				out dependency, (T)dep.dependency,
+				out stackLevel, dep.stackLevel,
+				out layerFoundIn, this
+			)
+			: useFallbacks
+			? Logic.SucceedIf(DependencyLayer.StealthTryFetch(
+				this.Fallback,
+				out dependency,
+				out stackLevel,
+				useFallbacks,
+				out layerFoundIn
+			))
+			: Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
 		private protected override bool StealthTryFetchOuter<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-		{
-			throw new NotImplementedException();
-		}
+			=> self == null
+			? throw new ArgumentNullException(nameof(self))
+			: self.GetType().IsValueType
+			? throw new ArgumentTypeException(
+				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
+				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
+				nameof(self)
+			)
+			: this._stack.Peek().fetchRecords.TryGetValue(self, out FetchRecord mostRecentFetch)
+			? Logic.Succeed(
+				out dependency, 
+			)
+			: Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
 		private struct StackFrame
 		{
 			public readonly int stackLevel;
 
-			public readonly ImmutableDictionary<Type, SearchableStack<StackedDependency>> dependencyStacks;
+			public readonly ImmutableDictionary<Type, StackedDependency> dependencies;
 
 			// Maps from a dependency that has been fetched to the stack level that it was originally injected at
 			public readonly ImmutableDictionary<object, FetchRecord> fetchRecords;
 
-			public bool IsNull => this.dependencyStacks == null;
+			public static readonly StackFrame Null = default;
+			public bool IsNull => this.dependencies == null;
+
+			public static readonly StackFrame Base = new StackFrame(
+				0,
+				ImmutableDictionary.Create<Type, StackedDependency>(),
+				ImmutableDictionary.Create<object, FetchRecord>()
+			);
+
+			public bool IsBase
+				=> this.stackLevel == Base.stackLevel
+				&& ReferenceEquals(this.dependencies, Base.dependencies)
+				&& ReferenceEquals(this.fetchRecords, Base.fetchRecords);
 
 			public StackFrame(
 				int stackLevel,
-				ImmutableDictionary<Type, SearchableStack<StackedDependency>> dependencyStacks,
+				ImmutableDictionary<Type, StackedDependency> dependencies,
 				ImmutableDictionary<object, FetchRecord> fetchRecords
 			) {
 				if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), stackLevel, "Cannot be negative");
 
 				this.stackLevel = stackLevel;
-				this.dependencyStacks = dependencyStacks ?? throw new ArgumentNullException(nameof(dependencyStacks));
+				this.dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
 				this.fetchRecords = fetchRecords ?? throw new ArgumentNullException(nameof(fetchRecords));
 			}
 		}
