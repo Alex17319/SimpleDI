@@ -61,7 +61,7 @@ namespace SimpleDI
 			);
 
 			// Try to find a fetch record locally
-			// If we can't, then try to use fallbacks if possible, calling the current method recursively
+			// If we can't, then try to use fallbacks if possible, calling the current method recursively, and return
 			if (!this._fetchRecords.TryGetValue(self, out FetchRecord mostRecentFetch))
 			{
 				if (!useFallbacks || this.Fallback == null) throw new ArgumentException(
@@ -80,8 +80,11 @@ namespace SimpleDI
 				));
 			}
 			
+			// The fetch record must have been found locally if this point is reached
+			// If it was in a fallback, then that was found using this method recursively, and we've already returned.
+			
 			// Try to find a dependency of type TOuter locally
-			// If we can't, then try to use fallbacks if possible, and return whatever we find 
+			// If we can't, then try to use fallbacks if possible, and return whatever we find
 			if (!this._dependencyStacks.TryGetValue(typeof(TOuter), out var stack) || stack.Count == 0)
 			{
 				if (!useFallbacks || this.Fallback == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);

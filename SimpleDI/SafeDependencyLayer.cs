@@ -89,23 +89,71 @@ namespace SimpleDI
 			: Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
 		private protected override bool StealthTryFetchOuter<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-			=> self == null
-			? throw new ArgumentNullException(nameof(self))
-			: self.GetType().IsValueType
-			? throw new ArgumentTypeException(
+		{
+			if (self == null) throw new ArgumentNullException(nameof(self));
+
+			if (self.GetType().IsValueType) throw new ArgumentTypeException(
 				$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
 				$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
 				nameof(self)
-			)
-			: this._stack.Peek().fetchRecords.TryGetValue(self, out FetchRecord mostRecentFetch)
-			? Logic.Succeed(
-				out dependency, 
-			)
-			: Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+			);
+
+			// Try to find a fetch record locally
+			// If we can't, then try to use fallbacks if possible, calling the current method recursively, and return
+			if (!this._stack.Peek().fetchRecords.TryGetValue(self, out FetchRecord mostRecentFetch))
+			{
+				if (!useFallbacks || this.Fallback == null) throw new ArgumentException(
+					$"No record is available of a dependency fetch having been performed for object '{self}' " +
+					$"(of type '{self.GetType().FullName}'). " +
+					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
+				);
+
+				Logic.SucceedIf(DependencyLayer.StealthTryFetchOuter(
+					this.Fallback,
+					self,
+					out dependency,
+					out stackLevel,
+					useFallbacks,
+					out layerFoundIn
+				));
+			}
+
+			// The fetch record must have been found locally if this point is reached
+			// If it was in a fallback, then that was found using this method recursively, and we've already returned.
+
+			// Try to find a dependency of type TOuter locally
+			// If we can't, then try to use fallbacks if possible, and return whatever we find
+
+			StackFrame frameFetchedFrom = this._stack.ElementAtOrDefault(
+				this.currentStackLevel - mostRecentFetch.stackLevelFoundAt
+			);
+
+			if (!frameFetchedFrom.IsNull && frameFetchedFrom.dependencies.TryGetValue(typeof(TOuter), out var dep))
+			{
+				return Logic.Succeed(
+					out dependency, (TOuter)dep.dependency,
+					out stackLevel, dep.stackLevel,
+					out layerFoundIn, this
+				);
+			}
+
+
+			// Didn't find a dependency of type TOuter locally; try to use fallbacks if we can
+			if (useFallbacks || this.Fallback != null) return Logic.SucceedIf(DependencyLayer.StealthTryFetch(
+				this.Fallback,
+				out dependency,
+				out stackLevel,
+				useFallbacks,
+				out layerFoundIn
+			));
+
+			// Can't use fallbacks either; fail
+			return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+		}
 
 		private struct StackFrame
 		{
-			public readonly int stackLevel;
+			//public readonly int stackLevel;
 
 			public readonly ImmutableDictionary<Type, StackedDependency> dependencies;
 
@@ -116,24 +164,24 @@ namespace SimpleDI
 			public bool IsNull => this.dependencies == null;
 
 			public static readonly StackFrame Base = new StackFrame(
-				0,
+				//0,
 				ImmutableDictionary.Create<Type, StackedDependency>(),
 				ImmutableDictionary.Create<object, FetchRecord>()
 			);
 
 			public bool IsBase
-				=> this.stackLevel == Base.stackLevel
-				&& ReferenceEquals(this.dependencies, Base.dependencies)
+				=> //this.stackLevel == Base.stackLevel
+				ReferenceEquals(this.dependencies, Base.dependencies)
 				&& ReferenceEquals(this.fetchRecords, Base.fetchRecords);
 
 			public StackFrame(
-				int stackLevel,
+				//int stackLevel,
 				ImmutableDictionary<Type, StackedDependency> dependencies,
 				ImmutableDictionary<object, FetchRecord> fetchRecords
 			) {
-				if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), stackLevel, "Cannot be negative");
+				//if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), stackLevel, "Cannot be negative");
 
-				this.stackLevel = stackLevel;
+				//this.stackLevel = stackLevel;
 				this.dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
 				this.fetchRecords = fetchRecords ?? throw new ArgumentNullException(nameof(fetchRecords));
 			}
