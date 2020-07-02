@@ -15,12 +15,53 @@ namespace SimpleDI.TryGet
 {
 	/// <summary>
 	/// Utility methods to make implementing TryGet... style methods slightly simpler.
-	/// Takes inspiration from logic programming.
+	/// Takes inspiration from logic programming. See remarks.
 	/// </summary>
+	/// <remarks>
+	/// Usage examples:
+	/// <code>
+	/// bool TryGet(out int thing1, out string thing2) {
+	///		if (foo) return Fail(out thing1, out thing2);
+	///		
+	///		if (blah) return Succeed(out thing1, 42, out thing2, "asdf");
+	///		else return Succeed(someFunctionThatSetsTheValues(out thing1, out thing2));
+	///	}
+	///	
+	///	// Or even (looks bad first time but its an easy pattern to get used to reading):
+	///	bool TryGet(out int thing1, out string thing2)
+	///		=> foo                                                            // if foo
+	///		? Fail(out thing1, out thing2)                                    // fail
+	///		: blah                                                            // if blah
+	///		? Succeed(out thing1, 42, out thing2, "asdf")                     // succeed
+	///		: Succeed(someFunctionThatSetsTheValues(out thing1, out thing2)); // else succeed
+	///		
+	/// // Unfortunately, if someFunctionThatSetsTheValues() returns void, we have to do:
+	/// bool TryGet(out int thing1, out string thing2) {
+	///		if (foo) return Fail(out thing1, out thing2);
+	///		
+	///		if (blah) return Succeed(out thing1, 42, out thing2, "asdf");
+	///		else {
+	///			someFunctionThatSetsTheValues(out thing1, out thing2);
+	///			return Succeed();
+	///		}
+	///	}
+	///	// And the second version won't work anymore.
+	///	// Might possibly be able to use delegates to fix this, but the idea
+	///	// here is to incur no perfomance penalty (after compiling), so no.
+	///	</code>
+	/// </remarks>
 	public static class Logic
 	{
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool Fail() => false;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool Succeed() { return true; }
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool Succeed<TIgnored>(TIgnored outSetter) { return true; }
+
 		// (use alt + click & drag, or alt + shift + arrow keys, to make a rectangular selection & edit)
-		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Fail() => false;
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Fail<T1                                                                   >(out T1 o1                                                                                                                                                                                   ) { o1 = default;                                                                                                                                                                                                                          return false; }
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Fail<T1, T2                                                               >(out T1 o1, out T2 o2                                                                                                                                                                        ) { o1 = default; o2 = default;                                                                                                                                                                                                            return false; }
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Fail<T1, T2, T3                                                           >(out T1 o1, out T2 o2, out T3 o3                                                                                                                                                             ) { o1 = default; o2 = default; o3 = default;                                                                                                                                                                                              return false; }
@@ -37,6 +78,23 @@ namespace SimpleDI.TryGet
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Fail<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14          >(out T1 o1, out T2 o2, out T3 o3, out T4 o4, out T5 o5, out T6 o6, out T7 o7, out T8 o8, out T9 o9, out T10 o10, out T11 o11, out T12 o12, out T13 o13, out T14 o14                          ) { o1 = default; o2 = default; o3 = default; o4 = default; o5 = default; o6 = default; o7 = default; o8 = default; o9 = default; o10 = default; o11 = default; o12 = default; o13 = default; o14 = default;                               return false; }
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Fail<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15     >(out T1 o1, out T2 o2, out T3 o3, out T4 o4, out T5 o5, out T6 o6, out T7 o7, out T8 o8, out T9 o9, out T10 o10, out T11 o11, out T12 o12, out T13 o13, out T14 o14, out T15 o15             ) { o1 = default; o2 = default; o3 = default; o4 = default; o5 = default; o6 = default; o7 = default; o8 = default; o9 = default; o10 = default; o11 = default; o12 = default; o13 = default; o14 = default; o15 = default;                return false; }
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Fail<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(out T1 o1, out T2 o2, out T3 o3, out T4 o4, out T5 o5, out T6 o6, out T7 o7, out T8 o8, out T9 o9, out T10 o10, out T11 o11, out T12 o12, out T13 o13, out T14 o14, out T15 o15, out T16 o16) { o1 = default; o2 = default; o3 = default; o4 = default; o5 = default; o6 = default; o7 = default; o8 = default; o9 = default; o10 = default; o11 = default; o12 = default; o13 = default; o14 = default; o15 = default; o16 = default; return false; }
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1                                                                   >(out T1 o1, T1 val1																																																																					                                                       ) { o1 = val1;                                                                                                                                                                                    return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2                                                               >(out T1 o1, T1 val1, out T2 o2, T2 val2																																																																                                                       ) { o1 = val1; o2 = val2;                                                                                                                                                                         return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3                                                           >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3																																																											                                                       ) { o1 = val1; o2 = val2; o3 = val3;                                                                                                                                                              return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4                                                       >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4																																																						                                                       ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4;                                                                                                                                                   return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5                                                   >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5																																																	                                                       ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5;                                                                                                                                        return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6                                               >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6																																												                                                       ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6;                                                                                                                             return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7                                           >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7																																							                                                       ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7;                                                                                                                  return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7, T8                                       >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7, out T8 o8, T8 val8																																		                                                       ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7; o8 = val8;                                                                                                       return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7, T8, T9                                   >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7, out T8 o8, T8 val8, out T9 o9, T9 val9																													                                                       ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7; o8 = val8; o9 = val9;                                                                                            return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10                              >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7, out T8 o8, T8 val8, out T9 o9, T9 val9, out T10 o10, T10 val10																							                                                       ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7; o8 = val8; o9 = val9; o10 = val10;                                                                               return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11                         >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7, out T8 o8, T8 val8, out T9 o9, T9 val9, out T10 o10, T10 val10, out T11 o11, T11 val11																	                                                       ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7; o8 = val8; o9 = val9; o10 = val10; o11 = val11;                                                                  return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12                    >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7, out T8 o8, T8 val8, out T9 o9, T9 val9, out T10 o10, T10 val10, out T11 o11, T11 val11, out T12 o12, T12 val12                                                                                                ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7; o8 = val8; o9 = val9; o10 = val10; o11 = val11; o12 = val12;                                                     return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13               >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7, out T8 o8, T8 val8, out T9 o9, T9 val9, out T10 o10, T10 val10, out T11 o11, T11 val11, out T12 o12, T12 val12, out T13 o13, T13 val13                                                                        ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7; o8 = val8; o9 = val9; o10 = val10; o11 = val11; o12 = val12; o13 = val13;                                        return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14          >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7, out T8 o8, T8 val8, out T9 o9, T9 val9, out T10 o10, T10 val10, out T11 o11, T11 val11, out T12 o12, T12 val12, out T13 o13, T13 val13, out T14 o14, T14 val14                                                ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7; o8 = val8; o9 = val9; o10 = val10; o11 = val11; o12 = val12; o13 = val13; o14 = val14;                           return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15     >(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7, out T8 o8, T8 val8, out T9 o9, T9 val9, out T10 o10, T10 val10, out T11 o11, T11 val11, out T12 o12, T12 val12, out T13 o13, T13 val13, out T14 o14, T14 val14, out T15 o15, T15 val15                        ) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7; o8 = val8; o9 = val9; o10 = val10; o11 = val11; o12 = val12; o13 = val13; o14 = val14; o15 = val15;              return true; }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool Succeed<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(out T1 o1, T1 val1, out T2 o2, T2 val2, out T3 o3, T3 val3, out T4 o4, T4 val4, out T5 o5, T5 val5, out T6 o6, T6 val6, out T7 o7, T7 val7, out T8 o8, T8 val8, out T9 o9, T9 val9, out T10 o10, T10 val10, out T11 o11, T11 val11, out T12 o12, T12 val12, out T13 o13, T13 val13, out T14 o14, T14 val14, out T15 o15, T15 val15, out T16 o16, T16 val16) { o1 = val1; o2 = val2; o3 = val3; o4 = val4; o5 = val5; o6 = val6; o7 = val7; o8 = val8; o9 = val9; o10 = val10; o11 = val11; o12 = val12; o13 = val13; o14 = val14; o15 = val15; o16 = val16; return true; }
 	}
 }
 
