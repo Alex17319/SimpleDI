@@ -26,6 +26,7 @@ namespace SimpleDI.TryGet
 	///		if (bar) return Succeed(out thing1, 42, out thing2, "asdf");
 	///		
 	///		if (baz) return SucceedIf(tryDoSomething(out thing1, out thing2))
+	///		// Note: use of SucceedIf is really optional, but provides consistency
 	///		
 	///		return Succeed(someFunctionThatSetsTheValues(out thing1, out thing2));
 	///	}
