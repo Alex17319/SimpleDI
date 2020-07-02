@@ -22,13 +22,13 @@ namespace SimpleDI
 			if (!this._dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {
 				// No stack found, or found stack is empty
 				if (useFallbacks && this.Fallback != null)
-					return DependencyLayer.StealthTryFetch(
+					return Logic.SucceedIf(DependencyLayer.StealthTryFetch(
 						this.Fallback,
 						out dependency,
 						out stackLevel,
 						useFallbacks,
 						out layerFoundIn
-					);
+					));
 				else return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 			}
 
@@ -70,14 +70,14 @@ namespace SimpleDI
 					$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
 				);
 
-				return DependencyLayer.StealthTryFetchOuter(
+				return Logic.SucceedIf(DependencyLayer.StealthTryFetchOuter(
 					this.Fallback,
 					self,
 					out dependency,
 					out stackLevel,
 					useFallbacks,
 					out layerFoundIn
-				);
+				));
 			}
 			
 			// Try to find a dependency of type TOuter locally
@@ -86,13 +86,13 @@ namespace SimpleDI
 			{
 				if (!useFallbacks || this.Fallback == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 				
-				return DependencyLayer.StealthTryFetch(
+				return Logic.SucceedIf(DependencyLayer.StealthTryFetch(
 					this.Fallback,
 					out dependency,
 					out stackLevel,
 					useFallbacks,
 					out layerFoundIn
-				);
+				));
 			}
 
 			// If we successfully found a dependency of type TOuter locally,
@@ -141,13 +141,13 @@ namespace SimpleDI
 			if (!useFallbacks || this.Fallback == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
 			// Fallback to previous layers
-			return DependencyLayer.StealthTryFetch(
+			return Logic.SucceedIf(DependencyLayer.StealthTryFetch(
 				this.Fallback,
 				out dependency,
 				out stackLevel,
 				useFallbacks,
 				out layerFoundIn
-			);
+			));
 		}
 
 
