@@ -1,4 +1,5 @@
-﻿using SimpleDI.TryGet;
+﻿using SimpleDI.DisposeExceptions;
+using SimpleDI.TryGet;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -20,7 +21,8 @@ namespace SimpleDI
 
 		SearchableStack<StackFrame> _stack = new SearchableStack<StackFrame>() { StackFrame.Base };
 
-		private int currentStackLevel;
+		//private int currentStackLevel;
+		protected override int CurrentStackLevel => _stack.Count - 1;
 
 
 		internal SafeDependencyLayer() : base() { }
@@ -114,9 +116,9 @@ namespace SimpleDI
 			// Try to find a dependency of type TOuter locally
 			// If we can't, then try to use fallbacks if possible, and return whatever we find
 
-			StackFrame frameFetchedFrom = StackFrame.Null;
-			if (mostRecentFetch.stackLevelFoundAt >= 0 && mostRecentFetch.stackLevelFoundAt < this.currentStackLevel) {
-				frameFetchedFrom = this._stack[this.currentStackLevel - mostRecentFetch.stackLevelFoundAt];
+			StackFrame frameFetchedFrom = StackFrame.Null; //TODO Fix issues here after fixing same in MutatingDependencyLayer
+			if (mostRecentFetch.stackLevelFoundAt >= 0 && mostRecentFetch.stackLevelFoundAt < this.CurrentStackLevel) {
+				frameFetchedFrom = this._stack[mostRecentFetch.stackLevelFoundAt];
 			}
 
 			if (!frameFetchedFrom.IsNull && frameFetchedFrom.dependencies.TryGetValue(typeof(TOuter), out var dep))
@@ -148,12 +150,33 @@ namespace SimpleDI
 			// have to put it back in later, just delete the later frames on the stack)
 			prevFetch = FetchRecord.Null;
 
-			_stack.Push(_stack.Peek().WithFetchRecord(dependency, new FetchRecord(layerFoundIn, stackLevelFoundAt)));
+			_stack.Push(_stack.Peek().WithFetchRecord(
+				dependency,
+				new FetchRecord(layerFoundIn, stackLevelFoundAt, this.currentStackLevel)
+			));
 		}
 
 		private protected override void CloseFetchedDependency(object dependency, FetchRecord prevFetch)
 		{
-			throw new NotImplementedException();
+			// Only ever look in/edit current layer (the record is only ever added to the
+			// current layer, as in general we must not modify other layers).
+
+			if (!prevFetch.IsNull) throw new FetchFrameCloseException(
+				$"{nameof(SafeDependencyLayer)} fetch frames must always have " +
+				"{nameof(FetchFrame.prevFetch)}.{nameof(FetchRecord.IsNull)} == {true}."
+			);
+
+			if (!_stack.PeekSecond().fetchRecords.ContainsKey(dependency)) {
+				var top = _stack.Peek();
+				var removed = top.fetchRecords.Remove(dependency);
+				if (top == _stack.)
+			}
+
+			FetchFrameCloseException noEntryPresentException() => new FetchFrameCloseException(
+				$"No entry in fetch record available to remove for object '{dependency}' " +
+				$"(with reference hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(dependency)}').",
+				DisposeExceptionsManager.WrapLastExceptionThrown()
+			);
 		}
 
 		private struct StackFrame

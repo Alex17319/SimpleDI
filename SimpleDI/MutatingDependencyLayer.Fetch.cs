@@ -83,6 +83,26 @@ namespace SimpleDI
 			// The fetch record must have been found locally if this point is reached
 			// If it was in a fallback, then that was found using this method recursively, and we've already returned.
 			
+			// However, that isn't the same thing as it representing a local dependency having been fetched,
+			// just that the record is stored locally. Either way, go to the layer from which the dependency
+			// was fetched, and from there search for outer dependencies
+			return Logic.SucceedIf(DependencyLayer.StealthTryFetchOuter(
+				mostRecentFetch.layerFoundAt,
+				mostRecentFetch.stackLevelFoundAt,
+				out dependency,
+				out stackLevel,
+				useFallbacks,
+				out layerFoundIn
+			));
+		}
+
+		private protected override bool StealthTryFetchOuter<TOuter>(
+			int prevFetchStackLevelFoundAt,
+			out TOuter dependency,
+			out int stackLevel,
+			bool useFallbacks,
+			out DependencyLayer layerFoundIn
+		) {
 			// Try to find a dependency of type TOuter locally
 			// If we can't, then try to use fallbacks if possible, and return whatever we find
 			if (!this._dependencyStacks.TryGetValue(typeof(TOuter), out var stack) || stack.Count == 0)
@@ -105,7 +125,7 @@ namespace SimpleDI
 			// dependency of type TOuter added before the fetch record was written.
 
 			int pos = stack.BinarySearch(
-				new StackedDependency(mostRecentFetch.stackLevelFoundAt, null),
+				new StackedDependency(prevFetchStackLevelFoundAt, null),
 				new StackSearchComparer()
 			);
 

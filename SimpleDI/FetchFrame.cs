@@ -20,6 +20,7 @@ namespace SimpleDI
 		internal readonly DependencyLayer layerSearchingFrom;
 		internal readonly object dependency;
 		internal readonly FetchRecord prevFetch;
+		internal readonly int stackLevelBeforeFetch;
 
 		/// <summary>True when the dependency fetched was a value-type, false when it was a reference-type.</summary>
 		public bool IsCleanupFree => dependency == null;
@@ -28,12 +29,23 @@ namespace SimpleDI
 
 		private bool _disposed;
 
-		internal FetchFrame(DependencyLayer layerSearchingFrom, object dependency, FetchRecord prevFetch)
-		{
+		internal FetchFrame(
+			DependencyLayer layerSearchingFrom,
+			object dependency,
+			FetchRecord prevFetch,
+			int stackLevelBeforeFetch
+		) {
+			if (stackLevelBeforeFetch < 0) throw new ArgumentOutOfRangeException(
+				nameof(stackLevelBeforeFetch),
+				stackLevelBeforeFetch,
+				"Cannot be negative."
+			);
+
 			this.layerSearchingFrom = layerSearchingFrom ?? throw new ArgumentNullException(nameof(layerSearchingFrom));
 			this.dependency = dependency ?? throw new ArgumentNullException(nameof(layerSearchingFrom));
 			this.prevFetch = prevFetch; // may have FetchRecord.IsNull true or false
 			this._disposed = false;
+			this.stackLevelBeforeFetch = stackLevelBeforeFetch;
 		}
 
 		/// <summary>

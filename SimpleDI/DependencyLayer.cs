@@ -17,7 +17,7 @@ namespace SimpleDI
 
 		protected bool Disposed { get; private set; } = false;
 
-		protected int StackLevel { get; }
+		protected abstract int CurrentStackLevel { get; }
 
 		internal DependencyLayer()
 		{
@@ -115,6 +115,11 @@ namespace SimpleDI
 
 		protected static bool StealthTryFetchOuter<TOuter>(DependencyLayer @this, object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 			=> @this.StealthTryFetchOuter(self, out dependency, out stackLevel, useFallbacks, out layerFoundIn);
+
+		private protected abstract bool StealthTryFetchOuter<TOuter>(int prevFetchStackLevelFoundAt, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
+
+		protected static bool StealthTryFetchOuter<TOuter>(DependencyLayer @this, int prevFetchStackLevelFoundAt, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+			=> @this.StealthTryFetchOuter(prevFetchStackLevelFoundAt, out dependency, out stackLevel, useFallbacks, out layerFoundIn);
 
 		private protected abstract void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch);
 
@@ -390,6 +395,8 @@ namespace SimpleDI
 		/// </exception>
 		public FetchFrame TryFetchOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
 		{
+			int stackLevelBeforeFetch = this.StackLevel;
+
 			if (!this.StealthTryFetchOuter(
 				self,
 				out outerDependency,
@@ -421,6 +428,8 @@ namespace SimpleDI
 				$"(current layer = '{this}', " +
 				$"{nameof(frame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{frame.layerSearchingFrom}')"
 			);
+
+			if (frame.)
 
 			CloseFetchedDependency(frame.dependency, frame.prevFetch);
 		}

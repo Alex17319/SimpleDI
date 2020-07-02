@@ -25,6 +25,10 @@ namespace SimpleDI
 
 		public T Peek() => this[this.Count - 1];
 
+		public T PeekSecond() => this[this.Count - 2];
+
+		public T PeekThird() => this[this.Count - 3];
+
 		public T Pop() {
 			T res = Peek();
 			this.RemoveAt(this.Count - 1);

@@ -35,6 +35,7 @@ namespace SimpleDI
 
 		private int currentStackLevel;
 
+		protected override int CurrentStackLevel => currentStackLevel;
 
 		internal MutatingDependencyLayer() : base() { }
 		internal MutatingDependencyLayer(DependencyLayer fallback) : base(fallback) { }
