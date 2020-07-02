@@ -20,7 +20,7 @@ namespace SimpleDI
 		{
 			addToStack_internal(dependency, toMatchAgainst);
 
-			return new InjectFrame(this, stackLevel++, toMatchAgainst);
+			return new InjectFrame(this, currentStackLevel++, toMatchAgainst);
 		}
 
 
@@ -71,14 +71,14 @@ namespace SimpleDI
 			Type toMatchAgainst,
 			bool isWildcard
 		) {
-			if (stackLevel != soFar.stackLevel + 1) throw new InvalidDIStateException(
+			if (currentStackLevel != soFar.stackLevel + 1) throw new InvalidDIStateException(
 				$"Cannot inject another dependency simultaneously as stack level has changed " +
 				$"(object dependency = '{dependency}', Type toMatchAgainst = '{toMatchAgainst}', "+
-				$"current stack level = '{stackLevel}', " +
+				$"current stack level = '{currentStackLevel}', " +
 				$"required stack level (soFar.stackLevel + 1) = '{soFar.stackLevel + 1}'"
 			);
 
-			stackLevel--;
+			currentStackLevel--;
 			SimultaneousInjectFrame result;
 
 			try {
@@ -89,7 +89,7 @@ namespace SimpleDI
 					isWildcard
 				);
 			} finally {
-				stackLevel++;
+				currentStackLevel++;
 			}
 
 			return result;
@@ -110,16 +110,16 @@ namespace SimpleDI
 					resStack = resStack.Push(t);
 				}
 
-				result = new SimultaneousInjectFrame(layer: this, stackLevel, resStack);
+				result = new SimultaneousInjectFrame(layer: this, currentStackLevel, resStack);
 			}
 			else
 			{
 				addToStack_internal(dependency, toMatchAgainst);
 
-				result = new SimultaneousInjectFrame(layer: this, stackLevel, soFar.Push(toMatchAgainst));
+				result = new SimultaneousInjectFrame(layer: this, currentStackLevel, soFar.Push(toMatchAgainst));
 			}
 
-			stackLevel++;
+			currentStackLevel++;
 			return result;
 		}
 
@@ -143,14 +143,14 @@ namespace SimpleDI
 
 		private void addToStack_internal(object dependency, Type toMatchAgainst)
 		{
-			var toPush = new StackedDependency(stackLevel, dependency);
+			var toPush = new StackedDependency(currentStackLevel, dependency);
 
 			if (_dependencyStacks.TryGetValue(toMatchAgainst, out var stack))
 			{
-				if (stack.Peek().stackLevel == stackLevel) throw new InvalidOperationException(
+				if (stack.Peek().stackLevel == currentStackLevel) throw new InvalidOperationException(
 					$"Cannot inject dependency against type '{toMatchAgainst.FullName}' " +
 					$"as there is already a dependency present against the same type at the current stack level " +
-					$"(stack level = '{stackLevel}'). Most likely cause: calling a method to inject multiple " +
+					$"(stack level = '{currentStackLevel}'). Most likely cause: calling a method to inject multiple " +
 					$"dependencies at the same time (i.e. at the same stack level), but requesting to add two or " +
 					$"more dependencies against the same type, or more than one wildcard dependency. This would " +
 					$"result in an ambiguity for what object should be returned when the dependencies are fetched " +
@@ -181,9 +181,9 @@ namespace SimpleDI
 				$"(current layer = '{this}', {nameof(frame)}.{nameof(InjectFrame.layer)} = '{frame.layer}')"
 			);
 
-			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
+			if (frame.stackLevel != currentStackLevel) throw new InjectFrameCloseException(
 				$"Cannot close inject frame with stack level '{frame.stackLevel}' " +
-				$"as it is different to the current stack level '{stackLevel}'.",
+				$"as it is different to the current stack level '{currentStackLevel}'.",
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
@@ -199,9 +199,9 @@ namespace SimpleDI
 				$"(current layer = '{this}', {nameof(frame)}.{nameof(InjectFrame.layer)} = '{frame.layer}')"
 			);
 
-			if (frame.stackLevel != stackLevel) throw new InjectFrameCloseException(
+			if (frame.stackLevel != currentStackLevel) throw new InjectFrameCloseException(
 				$"Cannot close frame with stack level '{frame.stackLevel}' " +
-				$"as it is different to the current stack level '{stackLevel}'.",
+				$"as it is different to the current stack level '{currentStackLevel}'.",
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
