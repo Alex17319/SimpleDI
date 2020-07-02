@@ -65,7 +65,7 @@
     <Compile Include="Utility Classes\ArgumentTypeException.cs" />
     <Compile Include="Dependencies.cs" />
     <Compile Include="MutatingDependencyLayer.Inject.cs" />
-    <Compile Include="MutatingDependencyLayer.Get.cs" />
+    <Compile Include="MutatingDependencyLayer.Fetch.cs" />
     <Compile Include="MutatingDependencyLayer.cs" />
     <Compile Include="DisposeExceptions\DisposeExceptionsManager.cs" />
     <Compile Include="DisposeExceptions\RegionCloseErrorEventArgs.cs" />
