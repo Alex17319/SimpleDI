@@ -16,21 +16,22 @@ namespace SimpleDI
 	public struct MultiFetchFrame : IDisposable
 	{
 		internal readonly DependencyLayer layerSearchingFrom;
-		internal ImmutableStack<FetchFrame> frames;
-		private readonly bool _needsCleanup;
+		internal readonly ImmutableStack<FetchFrame> frames;
 
 		private bool _disposed;
 
 		/// <summary>True when all dependencies fetched were value-types, false when any were reference-types.</summary>
 		/// <remarks>True if and only if no dependencies are stored.</remarks>
-		public bool IsCleanupFree => !_needsCleanup;
+		// Currently implemented by only adding in FetchFrames that need cleanup - one's that don't are skipped.
+		public bool IsCleanupFree => frames == null || frames.IsEmpty;
+
+		public int StackLevelBeforeLastFetch => this.IsCleanupFree ? -1 : frames.Peek().stackLevelBeforeFetch;
 
 		private MultiFetchFrame(DependencyLayer layerSearchingFrom, ImmutableStack<FetchFrame> frames)
 		{
 			this.layerSearchingFrom = layerSearchingFrom ?? throw new ArgumentNullException(nameof(layerSearchingFrom));
 			this.frames = frames ?? throw new ArgumentNullException(nameof(frames));
 			this._disposed = false;
-			this._needsCleanup = !frames.IsEmpty && frames.Any(d => !d.IsCleanupFree);
 		}
 
 		internal static MultiFetchFrame From(FetchFrame f) => new MultiFetchFrame(
@@ -42,7 +43,14 @@ namespace SimpleDI
 			=> f.layerSearchingFrom != this.layerSearchingFrom
 			? throw new ArgumentException(
 				$"Cannot combine with fetch frame searching from a different layer " +
-				$"(required layer = '{this.layerSearchingFrom}', provided layer = '{f.layerSearchingFrom}')."
+				$"(required layer = '{this.layerSearchingFrom}', provided layer = '{f.layerSearchingFrom}') " +
+				$"(i.e. this.{nameof(this.layerSearchingFrom)} != {nameof(f)}.{nameof(f.layerSearchingFrom)})."
+			)
+			: !this.IsCleanupFree && f.stackLevelBeforeFetch != this.StackLevelBeforeLastFetch + 1
+			? throw new ArgumentException(
+				$"{nameof(FetchFrame)} to be added must have {nameof(FetchFrame)}.{nameof(FetchFrame.stackLevelBeforeFetch)} " +
+				$"one greater than this.{nameof(StackLevelBeforeLastFetch)}." +
+				$"(required stack level = {this.StackLevelBeforeLastFetch + 1}, provided stack level = {f.stackLevelBeforeFetch})."
 			)
 			: this.IsCleanupFree && f.IsCleanupFree
 			? new MultiFetchFrame()

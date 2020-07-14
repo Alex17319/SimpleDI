@@ -129,6 +129,7 @@ namespace SimpleDI
 
 		private protected abstract void CloseFetchedDependency(object dependency, FetchRecord prevFetch);
 
+		private protected abstract void CloseFetchFrame_CheckStackLevel(int frameStackLevelBeforeFetch);
 
 
 		/// <summary>
@@ -474,10 +475,7 @@ namespace SimpleDI
 				$"{nameof(frame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{frame.layerSearchingFrom}')"
 			);
 
-			if (frame.stackLevelBeforeFetch != this.CurrentStackLevel - 1)
-			{
-				//TODO
-			}
+			CloseFetchFrame_CheckStackLevel(frame.stackLevelBeforeFetch);
 
 			CloseFetchedDependency(frame.dependency, frame.prevFetch);
 		}
@@ -491,6 +489,8 @@ namespace SimpleDI
 				$"(current layer = '{this}', " +
 				$"{nameof(multiFrame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{multiFrame.layerSearchingFrom}')"
 			);
+
+			CloseFetchFrame_CheckStackLevel(multiFrame.);
 
 			foreach (FetchFrame f in multiFrame.frames)
 			{

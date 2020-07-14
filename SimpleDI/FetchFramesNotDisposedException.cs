@@ -27,7 +27,7 @@ namespace SimpleDI
 		  System.Runtime.Serialization.SerializationInfo info,
 		  System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
 
-		public void CleanupAllBelowParent()
+		public void CloseFrameAndDescendants()
 		{
 			if (_cleaner == null) throw new InvalidOperationException(
 				$"this.cleaner is null, so cannot clean up all frames below parent frame."

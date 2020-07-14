@@ -144,7 +144,37 @@ namespace SimpleDI
 
 
 
-		private protected override void CloseFetchedDependency(object dependency, FetchRecord prevFetch)
+		internal override void CloseFetchFrame(FetchFrame frame)
+		{
+			if (frame.IsCleanupFree) return;
+
+			CloseFetchFrame_CheckLayer(frame);
+
+			if (frame.stackLevelBeforeFetch + 1 < this.CurrentStackLevel)
+			{
+				throw new FetchFrameCloseException(
+					$"Inner fetch frames have not been disposed - current stack level = {this.CurrentStackLevel}, " +
+					$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
+					$"(they would normally match)." +
+					$"The {nameof(MutatingDependencyLayer)} class cannot recover from fetch frame close exceptions."
+				);
+			}
+			
+			if (frame.stackLevelBeforeFetch + 1 > this.CurrentStackLevel)
+			{
+				throw new FetchFrameCloseException(
+					$"The specified fetch frame, or an outer frame, has already been disposed - " +
+					$"current stack level = {this.CurrentStackLevel}, " +
+					$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
+					$"(they would normally match)." +
+					$"The {nameof(MutatingDependencyLayer)} class cannot recover from fetch frame close exceptions."
+				);
+			}
+
+			closeFetchedDependency(frame.dependency, frame.prevFetch);
+		}
+
+		private void closeFetchedDependency(object dependency, FetchRecord prevFetch)
 		{
 			// Only ever look in/edit current layer (the record is only ever added to the
 			// current layer, as in general we must not modify other layers).

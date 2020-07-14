@@ -142,15 +142,54 @@ namespace SimpleDI
 			));
 		}
 
-		private protected override void CloseFetchedDependency(object dependency, FetchRecord prevFetch)
+		internal override void CloseFetchFrame(FetchFrame frame)
+		{
+			if (frame.IsCleanupFree) return;
+
+			CloseFetchFrame_CheckLayer(frame);
+
+			if (frame.stackLevelBeforeFetch + 1 < this.CurrentStackLevel)
+			{
+				throw new FetchFramesNotDisposedException(
+					() => {
+
+						//TODO: Cleanup logic
+
+						closeFetchedDependency(frame.dependency, frame.prevFetch);
+					},
+					$"Inner fetch frames have not been disposed - current stack level = {this.CurrentStackLevel}, " +
+					$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
+					$"(they would normally match)." +
+					$"This error may be recovered from by calling {nameof(FetchFramesNotDisposedException)}" +
+					$".{nameof(FetchFramesNotDisposedException.CloseFrameAndDescendants)}()."
+				);
+			}
+			
+			if (frame.stackLevelBeforeFetch + 1 > this.CurrentStackLevel)
+			{
+				throw new FetchFrameCloseException(
+					$"Fetch frame has already been disposed - current stack level = {this.CurrentStackLevel}, " +
+					$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
+					$"(they would normally match)." +
+					$"This error may be ignored, and furture operation should be unaffected, " +
+					$"however previous actions may have produced incorrect results (eg. the wrong dependency was fetched)."
+				);
+			}
+
+			closeFetchedDependency(frame.dependency, frame.prevFetch);
+		}
+
+		private void closeFetchedDependency(object dependency, FetchRecord prevFetch)
 		{
 			// Only ever look in/edit current layer (the record is only ever added to the
 			// current layer, as in general we must not modify other layers).
 
 			if (!prevFetch.IsNull) throw new FetchFrameCloseException(
 				$"{nameof(SafeDependencyLayer)} fetch frames must always have " +
-				"{nameof(FetchFrame.prevFetch)}.{nameof(FetchRecord.IsNull)} == {true}."
+				$"{nameof(FetchFrame.prevFetch)}.{nameof(FetchRecord.IsNull)} == {true}."
 			);
+
+			// By the time this method is called, we'll have checked that the layers
 
 			if (!_stack.PeekSecond().fetchRecords.ContainsKey(dependency)) {
 				var top = _stack.Peek();
@@ -160,7 +199,7 @@ namespace SimpleDI
 
 			FetchFrameCloseException noEntryPresentException() => new FetchFrameCloseException(
 				$"No entry in fetch record available to remove for object '{dependency}' " +
-				$"(with reference hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(dependency)}').",
+				$"(with reference-equality hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(dependency)}').",
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 		}
