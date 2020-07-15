@@ -60,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DependencyLayer.cs" />
+    <Compile Include="DependencySnapshot.cs" />
     <Compile Include="FetchFramesNotDisposedException.cs" />
     <Compile Include="RefEqualityComparer.cs" />
     <Compile Include="SafeDependencyLayer.cs" />

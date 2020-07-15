@@ -20,6 +20,7 @@ namespace SimpleDI
 		private protected override bool TryGetFromFetchRecords(object self, out FetchRecord mostRecentFetch)
 			=> this._fetchRecords.TryGetValue(self, out mostRecentFetch);
 
+		// Returns true if any dependency was successfully found, even if it's null
 		private protected override bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 		{
 			if (!this._dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {
@@ -37,10 +38,6 @@ namespace SimpleDI
 
 			var dInfo = stack.Peek();
 
-			// Fail if a null has been added to hide earlier dependencies
-			if (dInfo.dependency == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
-
-			// Otherwise, succeed
 			return Logic.Succeed(
 				out dependency, (T)dInfo.dependency,
 				out stackLevel, dInfo.stackLevel,
@@ -48,6 +45,7 @@ namespace SimpleDI
 			);
 		}
 
+		// Returns true if any dependency was successfully found, even if it's null
 		private protected override bool StealthTryFetchOuter<TOuter>(
 			int prevFetchStackLevelFoundAt,
 			out TOuter dependency,
@@ -98,10 +96,6 @@ namespace SimpleDI
 
 			if (pos >= 0) {
 				var outerInfo = stack[prevPos];
-
-				// TODO: Should it be possible to hide non-nullable value type dependencies?? Currently isn't
-				// Fail if a null has been added to hide earlier dependencies
-				if (outerInfo.dependency == null) return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
 				return Logic.Succeed(
 					out dependency, (TOuter)outerInfo.dependency,

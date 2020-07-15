@@ -66,6 +66,7 @@ namespace SimpleDI
 		private protected override bool TryGetFromFetchRecords(object self, out FetchRecord mostRecentFetch)
 			=> this._stack.Peek().fetchRecords.TryGetValue(self, out mostRecentFetch);
 
+		// Returns true if any dependency was successfully found, even if it's null
 		private protected override bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 			=> _stack.Peek().dependencies.TryGetValue(typeof(T), out StackedDependency dep)
 			? Logic.Succeed(
@@ -83,6 +84,7 @@ namespace SimpleDI
 			))
 			: Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
+		// Returns true if any dependency was successfully found, even if it's null
 		private protected override bool StealthTryFetchOuter<TOuter>(
 			int prevFetchStackLevelFoundAt,
 			out TOuter dependency,

@@ -23,6 +23,10 @@ namespace SimpleDI
 		/// </summary>
 		public DependencyLayer Fallback { get; }
 
+		public abstract bool SnapshotPresent { get; }
+
+		public abstract DependencySnapshot Snapshot { get; }
+
 		protected bool Disposed { get; private set; } = false;
 
 		protected abstract int CurrentStackLevel { get; }
@@ -265,6 +269,13 @@ namespace SimpleDI
 				return FetchFrame.CleanupFree;
 			}
 
+			// Fail if a null has been added to hide earlier dependencies
+			// TODO: Should it be possible to hide non-nullable value type dependencies?? Currently isn't
+			if (dependency == null) {
+				found = false;
+				return FetchFrame.CleanupFree;
+			}
+
 			found = true;
 
 			if (typeof(T).IsValueType) return FetchFrame.CleanupFree;
@@ -420,6 +431,13 @@ namespace SimpleDI
 				out var layerOuterFoundIn
 			)) {
 				outerDependency = default;
+				found = false;
+				return FetchFrame.CleanupFree;
+			}
+
+			// Fail if a null has been added to hide earlier dependencies
+			// TODO: Should it be possible to hide non-nullable value type dependencies?? Currently isn't
+			if (outerDependency == null) {
 				found = false;
 				return FetchFrame.CleanupFree;
 			}
