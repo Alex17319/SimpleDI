@@ -19,10 +19,11 @@ namespace SimpleDI
 	{
 
 
-		SearchableStack<StackFrame> _stack = new SearchableStack<StackFrame>() { StackFrame.Base };
+		private ImmutableStack<StackFrame> _stack = ImmutableStack.Create(StackFrame.Base);
+		private int _stackCount = 1;
 
 		//private int currentStackLevel;
-		protected override int CurrentStackLevel => _stack.Count - 1;
+		protected override int CurrentStackLevel => _stackCount - 1;
 
 
 		internal SafeDependencyLayer() : base() { }

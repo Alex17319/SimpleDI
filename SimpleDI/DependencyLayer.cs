@@ -23,7 +23,7 @@ namespace SimpleDI
 		/// </summary>
 		public DependencyLayer Fallback { get; }
 
-		public abstract bool SnapshotPresent { get; }
+		public abstract bool SnapshotReady { get; }
 
 		public abstract DependencySnapshot Snapshot { get; }
 
