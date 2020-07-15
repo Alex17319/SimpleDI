@@ -157,7 +157,7 @@ namespace SimpleDI
 				throw new FetchFramesNotDisposedException(
 					cleaner: () => { // Logic to recover from this error
 						// Could use _stack.RemoveRange(), but its annoying to work out the exact bounds,
-						// and they'll change if the 'empty stack means stack level -1' policy changes.
+						// and they'll change if the 'empty stack means stack level -1' etc policy changes.
 						// Efficiency shouldn't matter much in error recovery code, so instead just do:
 
 						while (frame.stackLevelBeforeFetch + 1 < this.CurrentStackLevel) {
@@ -190,7 +190,6 @@ namespace SimpleDI
 			// Only ever look in/edit current layer (the record is only ever added to the
 			// current layer, as in general we must not modify other layers).
 
-
 			close(frame.dependency);
 
 			void close(object dependency)
@@ -207,7 +206,7 @@ namespace SimpleDI
 				// Note: We have no way to detect whether the record was added to the stack at this level or
 				// lower down, just that it's there at all. Checking PeekSecond() doesn't help, as even if there's
 				// still an identical fetch record there, that could just be for a previous fetch.
-				// TODO: When testing, find out whether the earlier exceptions for stack levels mismatches etc
+				// TODO: When testing, find out whether the earlier exceptions for stack level mismatches etc
 				// prevent this from becoming an issue. Otherwise, may need to store a stack level next to each fetch record
 				// or something, but then we already pretty much do that with CurrentStackLevel depending on the stack size.
 			}

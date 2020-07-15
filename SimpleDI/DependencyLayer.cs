@@ -10,6 +10,13 @@ namespace SimpleDI
 		// TODO: Should Dependencies overall also do this?
 		// TODO: MutatingDependencyLayer is also possible to recover, by enumerating through
 		// the dictionary and for each stack removing all entries with too high a stack level.
+		// Nope, only the dependencies can be recovered, not the fetch record.
+
+		// TODO: Plan for snapshots
+		// Safe dependency layers can easily be snapshotted, while mutating ones will use a lazy initialised/dirtied
+		// snapshot - no cost if no snapshots occur, no extra cost if multiple snapshots taken with no mutation.
+		// Snapshot should be an immutable dict (or a type that wraps & exposes an immutable dict) so that
+		// new safe layers can check if a snapshot is available, and then use it as a starting point.
 
 		/// <summary>
 		/// Fallbacks are used to increase the search space, but will not be modified in any way.
@@ -485,8 +492,6 @@ namespace SimpleDI
 				$"(current layer = '{this}', " +
 				$"{nameof(multiFrame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{multiFrame.layerSearchingFrom}')"
 			);
-			// TODO: Fix this, move stack level checking stuff to CloseFetchedDependency
-			CloseFetchFrame_CheckStackLevel(multiFrame.);
 
 			foreach (FetchFrame f in multiFrame.frames)
 			{
