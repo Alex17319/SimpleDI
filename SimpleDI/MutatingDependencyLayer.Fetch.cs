@@ -144,19 +144,16 @@ namespace SimpleDI
 
 
 
-		internal override void CloseFetchFrame(FetchFrame frame)
+		private protected override void CloseFetchedDependency(FetchFrame frame)
 		{
-			if (frame.IsCleanupFree) return;
-
-			CloseFetchFrame_CheckLayer(frame);
-
 			if (frame.stackLevelBeforeFetch + 1 < this.CurrentStackLevel)
 			{
 				throw new FetchFrameCloseException(
 					$"Inner fetch frames have not been disposed - current stack level = {this.CurrentStackLevel}, " +
 					$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
 					$"(they would normally match)." +
-					$"The {nameof(MutatingDependencyLayer)} class cannot recover from fetch frame close exceptions."
+					$"The {nameof(MutatingDependencyLayer)} class cannot recover from fetch frame close exceptions.",
+					DisposeExceptionsManager.WrapLastExceptionThrown()
 				);
 			}
 			
@@ -167,31 +164,27 @@ namespace SimpleDI
 					$"current stack level = {this.CurrentStackLevel}, " +
 					$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
 					$"(they would normally match)." +
-					$"The {nameof(MutatingDependencyLayer)} class cannot recover from fetch frame close exceptions."
+					$"The {nameof(MutatingDependencyLayer)} class cannot recover from fetch frame close exceptions.",
+					DisposeExceptionsManager.WrapLastExceptionThrown()
 				);
 			}
 
-			closeFetchedDependency(frame.dependency, frame.prevFetch);
-		}
-
-		private void closeFetchedDependency(object dependency, FetchRecord prevFetch)
-		{
 			// Only ever look in/edit current layer (the record is only ever added to the
 			// current layer, as in general we must not modify other layers).
 
-			if (prevFetch.IsNull)
+			if (frame.prevFetch.IsNull)
 			{
-				if (!_fetchRecords.Remove(dependency)) throw noEntryPresentException();
+				if (!_fetchRecords.Remove(frame.dependency)) throw noEntryPresentException();
 			}
 			else
 			{
-				if (!_fetchRecords.ContainsKey(dependency)) throw noEntryPresentException();
-				_fetchRecords[dependency] = prevFetch;
+				if (!_fetchRecords.ContainsKey(frame.dependency)) throw noEntryPresentException();
+				_fetchRecords[frame.dependency] = frame.prevFetch;
 			}
 
 			FetchFrameCloseException noEntryPresentException() => new FetchFrameCloseException(
-				$"No entry in fetch record available to remove for object '{dependency}' " +
-				$"(with reference hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(dependency)}').",
+				$"No entry in fetch record available to remove for object '{frame.dependency}' " +
+				$"(with reference hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(frame.dependency)}').",
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 		}

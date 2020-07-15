@@ -127,9 +127,7 @@ namespace SimpleDI
 		internal abstract void CloseInjectFrame(InjectFrame frame);
 		internal abstract void CloseInjectFrame(SimultaneousInjectFrame frame);
 
-		private protected abstract void CloseFetchedDependency(object dependency, FetchRecord prevFetch);
-
-		private protected abstract void CloseFetchFrame_CheckStackLevel(int frameStackLevelBeforeFetch);
+		private protected abstract void CloseFetchedDependency(FetchFrame frame);
 
 
 		/// <summary>
@@ -475,9 +473,7 @@ namespace SimpleDI
 				$"{nameof(frame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{frame.layerSearchingFrom}')"
 			);
 
-			CloseFetchFrame_CheckStackLevel(frame.stackLevelBeforeFetch);
-
-			CloseFetchedDependency(frame.dependency, frame.prevFetch);
+			CloseFetchedDependency(frame);
 		}
 
 		internal void CloseFetchFrame(MultiFetchFrame multiFrame)
@@ -489,12 +485,12 @@ namespace SimpleDI
 				$"(current layer = '{this}', " +
 				$"{nameof(multiFrame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{multiFrame.layerSearchingFrom}')"
 			);
-
+			// TODO: Fix this, move stack level checking stuff to CloseFetchedDependency
 			CloseFetchFrame_CheckStackLevel(multiFrame.);
 
 			foreach (FetchFrame f in multiFrame.frames)
 			{
-				CloseFetchedDependency(f.dependency, f.prevFetch);
+				CloseFetchedDependency(f);
 			}
 		}
 

@@ -142,26 +142,36 @@ namespace SimpleDI
 			));
 		}
 
-		internal override void CloseFetchFrame(FetchFrame frame)
-		{
-			if (frame.IsCleanupFree) return;
 
-			CloseFetchFrame_CheckLayer(frame);
+
+		private protected override void CloseFetchedDependency(FetchFrame frame)
+		{
+			if (!frame.prevFetch.IsNull) throw new FetchFrameCloseException(
+				$"{nameof(SafeDependencyLayer)} fetch frames must always have " +
+				$"{nameof(FetchFrame.prevFetch)}.{nameof(FetchRecord.IsNull)} == {true}.",
+				DisposeExceptionsManager.WrapLastExceptionThrown()
+			);
 
 			if (frame.stackLevelBeforeFetch + 1 < this.CurrentStackLevel)
 			{
 				throw new FetchFramesNotDisposedException(
-					() => {
+					cleaner: () => { // Logic to recover from this error
+						// Could use _stack.RemoveRange(), but its annoying to work out the exact bounds,
+						// and they'll change if the 'empty stack means stack level -1' policy changes.
+						// Efficiency shouldn't matter much in error recovery code, so instead just do:
 
-						//TODO: Cleanup logic
+						while (frame.stackLevelBeforeFetch + 1 < this.CurrentStackLevel) {
+							this._stack.Pop();
+						}
 
-						closeFetchedDependency(frame.dependency, frame.prevFetch);
+						close(frame.dependency);
 					},
 					$"Inner fetch frames have not been disposed - current stack level = {this.CurrentStackLevel}, " +
 					$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
 					$"(they would normally match)." +
-					$"This error may be recovered from by calling {nameof(FetchFramesNotDisposedException)}" +
-					$".{nameof(FetchFramesNotDisposedException.CloseFrameAndDescendants)}()."
+					$"You may attempt to recover from this error by calling {nameof(FetchFramesNotDisposedException)}" +
+					$".{nameof(FetchFramesNotDisposedException.CloseFrameAndDescendants)}().",
+					DisposeExceptionsManager.WrapLastExceptionThrown()
 				);
 			}
 			
@@ -172,34 +182,39 @@ namespace SimpleDI
 					$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
 					$"(they would normally match)." +
 					$"This error may be ignored, and furture operation should be unaffected, " +
-					$"however previous actions may have produced incorrect results (eg. the wrong dependency was fetched)."
+					$"however previous actions may have produced incorrect results (eg. the wrong dependency was fetched).",
+					DisposeExceptionsManager.WrapLastExceptionThrown()
 				);
 			}
 
-			closeFetchedDependency(frame.dependency, frame.prevFetch);
-		}
-
-		private void closeFetchedDependency(object dependency, FetchRecord prevFetch)
-		{
 			// Only ever look in/edit current layer (the record is only ever added to the
 			// current layer, as in general we must not modify other layers).
 
-			if (!prevFetch.IsNull) throw new FetchFrameCloseException(
-				$"{nameof(SafeDependencyLayer)} fetch frames must always have " +
-				$"{nameof(FetchFrame.prevFetch)}.{nameof(FetchRecord.IsNull)} == {true}."
-			);
 
-			// By the time this method is called, we'll have checked that the layers
+			close(frame.dependency);
 
-			if (!_stack.PeekSecond().fetchRecords.ContainsKey(dependency)) {
+			void close(object dependency)
+			{
 				var top = _stack.Peek();
 				var removed = top.fetchRecords.Remove(dependency);
-				if (top == _stack.)
+
+				if (removed == top.fetchRecords) { // if nothing was removed 
+					throw noEntryPresentException();
+				}
+
+				_stack.Pop();
+
+				// Note: We have no way to detect whether the record was added to the stack at this level or
+				// lower down, just that it's there at all. Checking PeekSecond() doesn't help, as even if there's
+				// still an identical fetch record there, that could just be for a previous fetch.
+				// TODO: When testing, find out whether the earlier exceptions for stack levels mismatches etc
+				// prevent this from becoming an issue. Otherwise, may need to store a stack level next to each fetch record
+				// or something, but then we already pretty much do that with CurrentStackLevel depending on the stack size.
 			}
 
 			FetchFrameCloseException noEntryPresentException() => new FetchFrameCloseException(
-				$"No entry in fetch record available to remove for object '{dependency}' " +
-				$"(with reference-equality hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(dependency)}').",
+				$"No entry in fetch record available to remove for object '{frame.dependency}' " +
+				$"(with reference-equality hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(frame.dependency)}').",
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 		}
