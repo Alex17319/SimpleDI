@@ -13,34 +13,38 @@ using System.Threading.Tasks;
 
 namespace SimpleDI
 {
-	class CountedImmutableStack<T> : IReadOnlyCollection<T>
+	// Snapshotable == mutable wrapper holding an immutable type
+	// For stacks that means we can cache the count rather than having it need to be recalculated
+	public class SnapshotableStack<T> : IReadOnlyCollection<T>
 	{
 		public ImmutableStack<T> Stack { get; private set; }
 		public int Count { get; private set; }
 
-		public CountedImmutableStack() {
+		public bool IsEmpty => Count == 0;
+
+		public SnapshotableStack() {
 			this.Stack = ImmutableStack.Create<T>();
 		}
 
-		public CountedImmutableStack(ImmutableStack<T> stack) {
+		public SnapshotableStack(ImmutableStack<T> stack) {
 			this.Stack = stack;
 			this.Count = stack.Count();
 		}
 
-		public CountedImmutableStack(T item) {
+		public SnapshotableStack(T item) {
 			this.Stack = ImmutableStack.Create(item);
 			this.Count = 1;
 		}
 
-		public CountedImmutableStack(IEnumerable<T> items) {
+		public SnapshotableStack(IEnumerable<T> items) {
 			// The idea here is to iterate only once
 			// However if CreateRange tries to iterate twice (it shouldn't), we give up on that strategy
 
 			int count = 0;
-			this.Stack = ImmutableStack.CreateRange(counter());
+			this.Stack = ImmutableStack.CreateRange(enumerateAndCount());
 			this.Count = count;
 
-			IEnumerable<T> counter()
+			IEnumerable<T> enumerateAndCount()
 			{
 				if (count != 0) {
 					// CreateRange is iterating multiple times for some reason
@@ -65,6 +69,22 @@ namespace SimpleDI
 		{
 			this.Stack = this.Stack.Push(value);
 			this.Count++;
+		}
+
+		public T Peek() => this.Stack.Peek();
+		public ref readonly T PeekRef() => ref this.Stack.PeekRef();
+
+		public T Pop()
+		{
+			this.Stack = this.Stack.Pop(out T value);
+			this.Count--;
+			return value;
+		}
+
+		public void Clear()
+		{
+			this.Stack = this.Stack.Clear();
+			this.Count = 0;
 		}
 	}
 }
