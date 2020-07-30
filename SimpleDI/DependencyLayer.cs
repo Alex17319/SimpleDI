@@ -5,6 +5,15 @@ namespace SimpleDI
 {
 	public abstract class DependencyLayer
 	{
+		// ---- TODO ----
+		// Work out how useful fetching outer dependencies is in practise if dependencies are to be stored
+		// for later, & how it might work with snapshots - is it worth including for snapshots, given it wouldn't
+		// be possible when they're stored normally? Should there be some other single-dependency-with-fetch-record
+		// storage mechanism?
+		// The two ideas, snapshots and outer dependencies, seem to be pretty incompatible atm - even just storing a
+		// dependency for later won't work for fetching outer dependencies.
+		
+		
 		// TODO: Idea: ImmutableDict type layer will throw an exception that has a method
 		// to allow recovery to the current stack level
 		// TODO: Should Dependencies overall also do this?

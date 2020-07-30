@@ -33,7 +33,7 @@ namespace SimpleDI
 		private readonly Dictionary<object, FetchRecord> _fetchRecords
 			= new Dictionary<object, FetchRecord>(new RefEqualityComparer());
 
-		private int currentStackLevel;
+		private int currentStackLevel = 0;
 
 		protected override int CurrentStackLevel => currentStackLevel;
 

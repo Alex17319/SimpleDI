@@ -19,15 +19,17 @@ namespace SimpleDI
 	{
 
 
-		private ImmutableStack<StackFrame> _stack = ImmutableStack.Create(StackFrame.Base);
-		private int _stackCount = 1;
+		private SnapshotableStack<StackFrame> _stack = new SnapshotableStack<StackFrame>(StackFrame.Base);
 
 		//private int currentStackLevel;
-		protected override int CurrentStackLevel => _stackCount - 1;
+		protected override int CurrentStackLevel => _stack.Count - 1;
 
 
 		internal SafeDependencyLayer() : base() { }
 		internal SafeDependencyLayer(DependencyLayer fallback) : base(fallback) { }
+
+		private StackFrame getStackFrame(int stackLevel)
+			=> _stack.ElementAt(CurrentStackLevel - stackLevel);
 
 		public override SimultaneousInjectFrame InjectWild(object dependency, Type toMatchAgainst)
 		{
@@ -104,8 +106,8 @@ namespace SimpleDI
 			// the place to start searching from (TODO: Should we throw an exception instead?)
 			// If the stack is empty, have to fallback to other layers.
 			StackFrame frameFetchedFrom =
-				prevFetchStackLevelFoundAt - 1 < this.CurrentStackLevel
-				? this._stack[prevFetchStackLevelFoundAt - 1]
+				prevFetchStackLevelFoundAt <= this.CurrentStackLevel
+				? getStackFrame(stackLevel: prevFetchStackLevelFoundAt - 1)
 				: this._stack.Count > 0
 				? this._stack.Peek()
 				: StackFrame.Null;
