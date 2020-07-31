@@ -32,9 +32,9 @@ namespace SimpleDI
 		/// </summary>
 		public DependencyLayer Fallback { get; }
 
-		public abstract bool SnapshotReady { get; }
+		//public abstract bool SnapshotReady { get; }
 
-		public abstract DependencySnapshot Snapshot { get; }
+		//public abstract DependencySnapshot Snapshot { get; }
 
 		protected bool Disposed { get; private set; } = false;
 

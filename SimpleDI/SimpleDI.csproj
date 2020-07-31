@@ -59,10 +59,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IStatefulDependency.cs" />
     <Compile Include="SnapshotableStack.cs" />
     <Compile Include="DependencyLayer.cs" />
     <Compile Include="DependencySnapshot.cs" />
-    <Compile Include="FetchFramesNotDisposedException.cs" />
+    <Compile Include="Utility Classes\FetchFramesNotDisposedException.cs" />
     <Compile Include="RefEqualityComparer.cs" />
     <Compile Include="SafeDependencyLayer.cs" />
     <Compile Include="TryGet\Logic.cs" />
