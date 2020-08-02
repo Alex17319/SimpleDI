@@ -100,19 +100,19 @@ namespace SimpleDI
 		public static SimultaneousInjectFrame BeginSimultaneousInject()
 			=> CurrentLayer.BeginSimultaneousInject();
 
-		public static void Fetch<T>(out T dependency)
-			=> CurrentLayer.Fetch(out dependency, useFallbacks: true);
+		public static T Fetch<T>()
+			=> CurrentLayer.Fetch<T>(useFallbacks: true);
 
-		public static void FetchOrNull<T>(out T dependency) where T : class
-			=> CurrentLayer.FetchOrNull(out dependency, useFallbacks: true);
+		public static T FetchOrNull<T>() where T : class
+			=> CurrentLayer.FetchOrNull<T>(useFallbacks: true);
 
-		public static void FetchOrNull<T>(out T? dependency) where T : struct
-			=> CurrentLayer.FetchOrNull(out dependency, useFallbacks: true);
+		public static T? FetchStructOrNull<T>() where T : struct
+			=> CurrentLayer.FetchStructOrNull<T>(useFallbacks: true);
 
-		public static void FetchNullableOrNull<T>(out T? dependency) where T : struct
-			=> CurrentLayer.FetchNullableOrNull(out dependency, useFallbacks: true);
+		public static T? FetchNullableOrNull<T>() where T : struct
+			=> CurrentLayer.FetchNullableOrNull<T>(useFallbacks: true);
 
-		public static void TryFetch<T>(out T dependency, out bool found)
-			=> CurrentLayer.TryFetch(out dependency, out found, useFallbacks: true);
+		public static bool TryFetch<T>(out T dependency)
+			=> CurrentLayer.TryFetch(out dependency, useFallbacks: true);
 	}
 }

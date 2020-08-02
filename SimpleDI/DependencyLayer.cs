@@ -184,11 +184,10 @@ namespace SimpleDI
 		/// <exception cref="DependencyNotFoundException">
 		/// No dependency against type <typeparamref name="T"/> is available.
 		/// </exception>
-		public void Fetch<T>(out T dependency, bool useFallbacks)
-		{
-			TryFetch(out dependency, out bool found, useFallbacks);
-			if (!found) throw new DependencyNotFoundException(typeof(T));
-		}
+		public T Fetch<T>(bool useFallbacks)
+			=> TryFetch(out T dependency, useFallbacks)
+			? dependency
+			: throw new DependencyNotFoundException(typeof(T));
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
@@ -197,12 +196,11 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public void FetchOrNull<T>(out T dependency, bool useFallbacks)
+		public T FetchOrNull<T>(bool useFallbacks)
 			where T : class
-		{
-			TryFetch(out dependency, out bool found, useFallbacks);
-			if (!found) dependency = null;
-		}
+			=> TryFetch(out T dependency, useFallbacks)
+			? dependency
+			: null;
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
@@ -213,12 +211,11 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public void FetchOrNull<T>(out T? dependency, bool useFallbacks)
+		public T? FetchStructOrNull<T>(bool useFallbacks)
 			where T : struct
-		{
-			TryFetch(out T dep, out bool found, useFallbacks);
-			dependency = found ? dep : (T?)null;
-		}
+			=> TryFetch(out T dep, useFallbacks)
+			? dep
+			: (T?)null;
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
@@ -234,12 +231,11 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public void FetchNullableOrNull<T>(out T? dependency, bool useFallbacks)
+		public T? FetchNullableOrNull<T>(bool useFallbacks)
 			 where T : struct
-		{
-			TryFetch(out dependency, out bool found, useFallbacks);
-			if (!found) dependency = null;
-		}
+			=> TryFetch(out T? dependency, useFallbacks)
+			? dependency
+			: null;
 
 		/// <summary>
 		/// <see langword="[Call inside using()]"></see>
@@ -249,29 +245,13 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <param name="found"></param>
 		/// <returns></returns>
-		public void TryFetch<T>(out T dependency, out bool found, bool useFallbacks)
-		{
-			int stackLevelBeforeFetch = this.CurrentStackLevel;
-
-			if (!this.StealthTryFetch(
+		public bool TryFetch<T>(out T dependency, bool useFallbacks)
+			=> this.StealthTryFetch(
 				out dependency,
 				out int stackLevel,
 				useFallbacks,
-				out var layerFoundIn)
-			) {
-				found = false;
-				return;
-			}
-
-			// Fail if a null has been added to hide earlier dependencies
-			// TODO: Should it be possible to hide non-nullable value type dependencies?? Currently isn't
-			if (dependency == null) {
-				found = false;
-				return;
-			}
-
-			found = true;
-		}
+				out var layerFoundIn
+			) && dependency != null;
 
 
 
