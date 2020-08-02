@@ -26,18 +26,24 @@ namespace SimpleDI
 		}
 
 		internal void RunOnInject() {
+			if (injectState == null) return;
+
 			for (int i = 0; i < this.injectState.Length; i++) {
 				this.injectState[i].RunOnInject();
 			}
 		}
 		
 		internal void RunOnFetch() {
+			if (injectState == null) return;
+
 			for (int i = 0; i < this.injectState.Length; i++) {
 				this.injectState[i].RunOnFetch();
 			}
 		}
 		
 		internal ISnapshotStateWrapper[] RunOnSnapshot() {
+			if (injectState == null) return null;
+
 			ISnapshotStateWrapper[] snapshotState = new ISnapshotStateWrapper[this.injectState.Length];
 			for (int i = 0; i < this.injectState.Length; i++) {
 				snapshotState[i] = this.injectState[i].RunOnSnapshot();

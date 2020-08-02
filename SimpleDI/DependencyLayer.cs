@@ -5,6 +5,8 @@ namespace SimpleDI
 {
 	public abstract class DependencyLayer
 	{
+		// TODO: Call OnFetch, and then implement snapshots and call OnSnapshot and OnFetchFromSnapshot.
+
 		// ---- TODO ----
 		// Work out how useful fetching outer dependencies is in practise if dependencies are to be stored
 		// for later, & how it might work with snapshots - is it worth including for snapshots, given it wouldn't
@@ -135,8 +137,6 @@ namespace SimpleDI
 
 		internal abstract void CloseInjectFrame(InjectFrame frame);
 		internal abstract void CloseInjectFrame(SimultaneousInjectFrame frame);
-
-		//	private protected abstract void CloseFetchedDependency(FetchFrame frame);
 
 
 		/// <summary>
