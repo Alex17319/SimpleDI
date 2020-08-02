@@ -86,74 +86,6 @@ namespace SimpleDI
 
 
 
-		//	private protected override void CloseFetchedDependency(FetchFrame frame)
-		//	{
-		//		if (frame.stackLevelBeforeFetch + 1 < this.CurrentStackLevel)
-		//		{
-		//			throw new FetchFramesNotDisposedException(
-		//				cleaner: () => { // Logic to recover from this error
-		//					// Could use _stack.RemoveRange(), but its annoying to work out the exact bounds,
-		//					// and they'll change if the 'empty stack means stack level -1' etc policy changes.
-		//					// Efficiency shouldn't matter much in error recovery code, so instead just do:
-		//	
-		//					while (frame.stackLevelBeforeFetch + 1 < this.CurrentStackLevel) {
-		//						this._stack.Pop();
-		//					}
-		//	
-		//					close(frame.dependency);
-		//				},
-		//				$"Inner fetch frames have not been disposed - current stack level = {this.CurrentStackLevel}, " +
-		//				$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
-		//				$"(they would normally match)." +
-		//				$"You may attempt to recover from this error by calling {nameof(FetchFramesNotDisposedException)}" +
-		//				$".{nameof(FetchFramesNotDisposedException.CloseFrameAndDescendants)}().",
-		//				DisposeExceptionsManager.WrapLastExceptionThrown()
-		//			);
-		//		}
-		//		
-		//		if (frame.stackLevelBeforeFetch + 1 > this.CurrentStackLevel)
-		//		{
-		//			throw new FetchFrameCloseException(
-		//				$"Fetch frame has already been disposed - current stack level = {this.CurrentStackLevel}, " +
-		//				$"stack level after creating the frame to dispose = {frame.stackLevelBeforeFetch + 1} " +
-		//				$"(they would normally match)." +
-		//				$"This error may be ignored, and furture operation should be unaffected, " +
-		//				$"however previous actions may have produced incorrect results (eg. the wrong dependency was fetched).",
-		//				DisposeExceptionsManager.WrapLastExceptionThrown()
-		//			);
-		//		}
-		//	
-		//		// Only ever look in/edit current layer (the record is only ever added to the
-		//		// current layer, as in general we must not modify other layers).
-		//	
-		//		close(frame.dependency);
-		//	
-		//		void close(object dependency)
-		//		{
-		//			var top = _stack.Peek();
-		//			var removed = top.fetchRecords.Remove(dependency);
-		//	
-		//			if (removed == top.fetchRecords) { // if nothing was removed 
-		//				throw noEntryPresentException();
-		//			}
-		//	
-		//			_stack.Pop();
-		//	
-		//			// Note: We have no way to detect whether the record was added to the stack at this level or
-		//			// lower down, just that it's there at all. Checking PeekSecond() doesn't help, as even if there's
-		//			// still an identical fetch record there, that could just be for a previous fetch.
-		//			// TODO: When testing, find out whether the earlier exceptions for stack level mismatches etc
-		//			// prevent this from becoming an issue. Otherwise, may need to store a stack level next to each fetch record
-		//			// or something, but then we already pretty much do that with CurrentStackLevel depending on the stack size.
-		//		}
-		//	
-		//		FetchFrameCloseException noEntryPresentException() => new FetchFrameCloseException(
-		//			$"No entry in fetch record available to remove for object '{frame.dependency}' " +
-		//			$"(with reference-equality hashcode '{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(frame.dependency)}').",
-		//			DisposeExceptionsManager.WrapLastExceptionThrown()
-		//		);
-		//	}
-
 		private struct StackFrame
 		{
 			//public readonly int stackLevel;
@@ -169,28 +101,21 @@ namespace SimpleDI
 			public static readonly StackFrame Base = new StackFrame(
 				//0,
 				ImmutableDictionary.Create<Type, StackedDependency>()
-				//	ImmutableDictionary.Create<object, FetchRecord>()
 			);
 
 			public bool IsBase
 				=> //this.stackLevel == Base.stackLevel
 				ReferenceEquals(this.dependencies, Base.dependencies);
-				//	&& ReferenceEquals(this.fetchRecords, Base.fetchRecords);
 
 			public StackFrame(
 				//int stackLevel,
 				ImmutableDictionary<Type, StackedDependency> dependencies
-				//	ImmutableDictionary<object, FetchRecord> fetchRecords
 			) {
 				//if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), stackLevel, "Cannot be negative");
 
 				//this.stackLevel = stackLevel;
 				this.dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
-				//	this.fetchRecords = fetchRecords ?? throw new ArgumentNullException(nameof(fetchRecords));
 			}
-
-			//	public StackFrame WithFetchRecord(object dep, FetchRecord record)
-			//		=> new StackFrame(this.dependencies, this.fetchRecords.Add(dep, record));
 		}
 	}
 }

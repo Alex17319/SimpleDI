@@ -392,36 +392,6 @@ namespace SimpleDI
 		}
 
 
-		//	internal void CloseFetchFrame(FetchFrame frame)
-		//	{
-		//		if (frame.IsCleanupFree) return;
-		//	
-		//		if (frame.layerSearchingFrom != this) throw new InjectFrameCloseException(
-		//			$"Cannot close fetch frame as it does not belong to the current dependency layer " +
-		//			$"(current layer = '{this}', " +
-		//			$"{nameof(frame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{frame.layerSearchingFrom}')"
-		//		);
-		//	
-		//		CloseFetchedDependency(frame);
-		//	}
-
-		//	internal void CloseFetchFrame(MultiFetchFrame multiFrame)
-		//	{
-		//		if (multiFrame.IsCleanupFree) return;
-		//	
-		//		if (multiFrame.layerSearchingFrom != this) throw new InjectFrameCloseException(
-		//			$"Cannot close fetch frame as it does not belong to the current dependency layer " +
-		//			$"(current layer = '{this}', " +
-		//			$"{nameof(multiFrame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{multiFrame.layerSearchingFrom}')"
-		//		);
-		//	
-		//		foreach (FetchFrame f in multiFrame.frames)
-		//		{
-		//			CloseFetchedDependency(f);
-		//		}
-		//	}
-
-
 
 		protected static void RequireDependencySubtypeOf(object dependency, Type type, string dependencyMoniker = "dependency")
 		{

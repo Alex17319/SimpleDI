@@ -114,20 +114,5 @@ namespace SimpleDI
 
 		public static void TryFetch<T>(out T dependency, out bool found)
 			=> CurrentLayer.TryFetch(out dependency, out found, useFallbacks: true);
-
-		//	public static FetchFrame FetchOuter<TOuter>(object self, out TOuter outerDependency)
-		//		=> CurrentLayer.FetchOuter(self, out outerDependency, useFallbacks: true);
-		//	
-		//	public static FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter outerDependency) where TOuter : class
-		//		=> CurrentLayer.FetchOuterOrNull(self, out outerDependency, useFallbacks: true);
-		//	
-		//	public static FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter? outerDependency) where TOuter : struct
-		//		=> CurrentLayer.FetchOuterOrNull(self, out outerDependency, useFallbacks: true);
-		//	
-		//	public static FetchFrame FetchOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency) where TOuter : struct
-		//		=> CurrentLayer.FetchOuterNullableOrNull(self, out outerDependency, useFallbacks: true);
-		//	
-		//	public static FetchFrame TryFetchOuter<TOuter>(object self, out TOuter outerDependency, out bool found)
-		//		=> CurrentLayer.TryFetchOuter(self, out outerDependency, out found, useFallbacks: true);
 	}
 }

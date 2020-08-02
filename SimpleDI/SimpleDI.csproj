@@ -76,9 +76,7 @@
     <Compile Include="MutatingDependencyLayer.cs" />
     <Compile Include="DisposeExceptions\DisposeExceptionsManager.cs" />
     <Compile Include="DisposeExceptions\RegionCloseErrorEventArgs.cs" />
-    <Compile Include="FetchFrame.cs" />
     <Compile Include="DisposeExceptions\DisposeInnerException.cs" />
-    <Compile Include="FetchRecord.cs" />
     <Compile Include="Utility Classes\LayerCloseMismatchEventArgs.cs" />
     <Compile Include="DisposeExceptions\SafeDisposeExceptionsRegion.cs" />
     <Compile Include="SimultaneousInjectFrame.cs" />
@@ -87,7 +85,6 @@
     <Compile Include="Utility Classes\DependencyNotFoundException.cs" />
     <Compile Include="Utility Classes\FetchFrameCloseException.cs" />
     <Compile Include="Utility Classes\InvalidDIStateException.cs" />
-    <Compile Include="MultiFetchFrame.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SearchableStack.cs" />
     <Compile Include="StackedDependency.cs" />
