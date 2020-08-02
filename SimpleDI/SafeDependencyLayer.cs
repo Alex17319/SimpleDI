@@ -66,8 +66,8 @@ namespace SimpleDI
 			throw new NotImplementedException();
 		}
 
-		private protected override bool TryGetFromFetchRecords(object self, out FetchRecord mostRecentFetch)
-			=> this._stack.Peek().fetchRecords.TryGetValue(self, out mostRecentFetch);
+		//	private protected override bool TryGetFromFetchRecords(object self, out FetchRecord mostRecentFetch)
+		//		=> this._stack.Peek().fetchRecords.TryGetValue(self, out mostRecentFetch);
 
 		// Returns true if any dependency was successfully found, even if it's null
 		private protected override bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
@@ -87,75 +87,75 @@ namespace SimpleDI
 			))
 			: Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
 
-		// Returns true if any dependency was successfully found, even if it's null
-		private protected override bool StealthTryFetchOuter<TOuter>(
-			int prevFetchStackLevelFoundAt,
-			out TOuter dependency,
-			out int stackLevel,
-			bool useFallbacks,
-			out DependencyLayer layerFoundIn
-		) {
-			Debug.Assert(prevFetchStackLevelFoundAt >= 1);
+		//	// Returns true if any dependency was successfully found, even if it's null
+		//	private protected override bool StealthTryFetchOuter<TOuter>(
+		//		int prevFetchStackLevelFoundAt,
+		//		out TOuter dependency,
+		//		out int stackLevel,
+		//		bool useFallbacks,
+		//		out DependencyLayer layerFoundIn
+		//	) {
+		//		Debug.Assert(prevFetchStackLevelFoundAt >= 1);
+		//	
+		//		// Try to find a dependency of type TOuter locally
+		//		// If we can't, then try to use fallbacks if possible, and return whatever we find
+		//	
+		//		// If the previous fetch found a dependency that's in the currently available stack, get
+		//		// the place one deeper into the stack.
+		//		// If not, i.e. the current stack is too short, then just use the end of the stack as
+		//		// the place to start searching from (TODO: Should we throw an exception instead?)
+		//		// If the stack is empty, have to fallback to other layers.
+		//		StackFrame frameFetchedFrom =
+		//			prevFetchStackLevelFoundAt <= this.CurrentStackLevel
+		//			? getStackFrame(stackLevel: prevFetchStackLevelFoundAt - 1)
+		//			: this._stack.Count > 0
+		//			? this._stack.Peek()
+		//			: StackFrame.Null;
+		//	
+		//		if (!frameFetchedFrom.IsNull && frameFetchedFrom.dependencies.TryGetValue(typeof(TOuter), out var dep))
+		//		{
+		//			return Logic.Succeed(
+		//				out dependency, (TOuter)dep.dependency,
+		//				out stackLevel, dep.stackLevel,
+		//				out layerFoundIn, this
+		//			);
+		//		}
+		//	
+		//	
+		//		// Didn't find a dependency of type TOuter locally; try to use fallbacks if we can
+		//		if (useFallbacks || this.Fallback != null) return Logic.SucceedIf(DependencyLayer.StealthTryFetch(
+		//			this.Fallback,
+		//			out dependency,
+		//			out stackLevel,
+		//			useFallbacks,
+		//			out layerFoundIn
+		//		));
+		//	
+		//		// Can't use fallbacks either; fail
+		//		return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+		//	}
 
-			// Try to find a dependency of type TOuter locally
-			// If we can't, then try to use fallbacks if possible, and return whatever we find
-
-			// If the previous fetch found a dependency that's in the currently available stack, get
-			// the place one deeper into the stack.
-			// If not, i.e. the current stack is too short, then just use the end of the stack as
-			// the place to start searching from (TODO: Should we throw an exception instead?)
-			// If the stack is empty, have to fallback to other layers.
-			StackFrame frameFetchedFrom =
-				prevFetchStackLevelFoundAt <= this.CurrentStackLevel
-				? getStackFrame(stackLevel: prevFetchStackLevelFoundAt - 1)
-				: this._stack.Count > 0
-				? this._stack.Peek()
-				: StackFrame.Null;
-
-			if (!frameFetchedFrom.IsNull && frameFetchedFrom.dependencies.TryGetValue(typeof(TOuter), out var dep))
-			{
-				return Logic.Succeed(
-					out dependency, (TOuter)dep.dependency,
-					out stackLevel, dep.stackLevel,
-					out layerFoundIn, this
-				);
-			}
-
-
-			// Didn't find a dependency of type TOuter locally; try to use fallbacks if we can
-			if (useFallbacks || this.Fallback != null) return Logic.SucceedIf(DependencyLayer.StealthTryFetch(
-				this.Fallback,
-				out dependency,
-				out stackLevel,
-				useFallbacks,
-				out layerFoundIn
-			));
-
-			// Can't use fallbacks either; fail
-			return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
-		}
-
-		private protected override void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch)
-		{
-			// No need to return prevFetch here as we're using a stack of immutable dictionaries (so don't
-			// have to put it back in later, just delete the later frames on the stack)
-			prevFetch = FetchRecord.Null;
-
-			_stack.Push(_stack.Peek().WithFetchRecord(
-				dependency,
-				new FetchRecord(layerFoundIn, stackLevelFoundAt)
-			));
-		}
+		//	private protected override void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch)
+		//	{
+		//		// No need to return prevFetch here as we're using a stack of immutable dictionaries (so don't
+		//		// have to put it back in later, just delete the later frames on the stack)
+		//		prevFetch = FetchRecord.Null;
+		//	
+		//		_stack.Push(_stack.Peek().WithFetchRecord(
+		//			dependency,
+		//			new FetchRecord(layerFoundIn, stackLevelFoundAt)
+		//		));
+		//	}
 
 
 
 		private protected override void CloseFetchedDependency(FetchFrame frame)
 		{
-			if (!frame.prevFetch.IsNull) throw new FetchFrameCloseException(
-				$"{nameof(SafeDependencyLayer)} fetch frames must always have " +
-				$"{nameof(FetchFrame.prevFetch)}.{nameof(FetchRecord.IsNull)} == {true}.",
-				DisposeExceptionsManager.WrapLastExceptionThrown()
-			);
+			//	if (!frame.prevFetch.IsNull) throw new FetchFrameCloseException(
+			//		$"{nameof(SafeDependencyLayer)} fetch frames must always have " +
+			//		$"{nameof(FetchFrame.prevFetch)}.{nameof(FetchRecord.IsNull)} == {true}.",
+			//		DisposeExceptionsManager.WrapLastExceptionThrown()
+			//	);
 
 			if (frame.stackLevelBeforeFetch + 1 < this.CurrentStackLevel)
 			{

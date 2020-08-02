@@ -16,11 +16,13 @@ namespace SimpleDI
 	{
 		public readonly int stackLevel;
 		public readonly object dependency;
+		public readonly object[] injectState;
 		
-		public StackedDependency(int stackLevel, object dependency)
+		public StackedDependency(int stackLevel, object dependency, object[] injectState)
 		{
 			this.stackLevel = stackLevel;
 			this.dependency = dependency;
+			this.injectState = injectState;
 		}
 	}
 }

@@ -141,10 +141,10 @@ namespace SimpleDI
 			}
 		}
 
+		// TODO: Ensure that toMatchAgainst isn't a generic type definition, open constructed generic type,
+		// generic type parameter, etc. Or maybe it can be??
 		private void addToStack_internal(object dependency, Type toMatchAgainst)
 		{
-			var toPush = new StackedDependency(currentStackLevel + 1, dependency);
-
 			if (_dependencyStacks.TryGetValue(toMatchAgainst, out var stack))
 			{
 				if (stack.Peek().stackLevel == currentStackLevel + 1) throw new InvalidOperationException(
@@ -162,12 +162,17 @@ namespace SimpleDI
 					$"inner code to both Fetch() the group and Fetch() just the first element (for example) then inject" +
 					$"e.g. both the List<T> and the instance of T."
 				);
-				stack.Push(toPush);
+				stack.Push(whatToPush());
 			}
 			else
 			{
-				_dependencyStacks.Add(toMatchAgainst, new SearchableStack<StackedDependency> { toPush });
+				_dependencyStacks.Add(toMatchAgainst, new SearchableStack<StackedDependency> { whatToPush() });
 			}
+
+			// Must only call this (i.e. call RunOnInject()) AFTER checking to throw any exceptions.
+			// Must also only call it BEFORE any lasting changes are made, in case it throws an exception.
+			// TODO: Check if there's built-in exceptions that could occur, and check that there's no lasting changes.
+			StackedDependency whatToPush() => new StackedDependency(currentStackLevel + 1, dependency, RunOnInject(dependency));
 		}
 
 
