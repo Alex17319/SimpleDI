@@ -16,13 +16,33 @@ namespace SimpleDI
 	{
 		public readonly int stackLevel;
 		public readonly object dependency;
-		public readonly object[] injectState;
+		public readonly StateWrapper[] injectState;
 		
-		public StackedDependency(int stackLevel, object dependency, object[] injectState)
+		public StackedDependency(int stackLevel, object dependency, StateWrapper[] injectState)
 		{
 			this.stackLevel = stackLevel;
 			this.dependency = dependency;
 			this.injectState = injectState;
+		}
+
+		internal void RunOnInject() {
+			for (int i = 0; i < this.injectState.Length; i++) {
+				this.injectState[i].RunOnInject();
+			}
+		}
+		
+		internal void RunOnFetch() {
+			for (int i = 0; i < this.injectState.Length; i++) {
+				this.injectState[i].RunOnFetch();
+			}
+		}
+		
+		internal ISnapshotStateWrapper[] RunOnSnapshot() {
+			ISnapshotStateWrapper[] snapshotState = new ISnapshotStateWrapper[this.injectState.Length];
+			for (int i = 0; i < this.injectState.Length; i++) {
+				snapshotState[i] = this.injectState[i].RunOnSnapshot();
+			}
+			return snapshotState;
 		}
 	}
 }

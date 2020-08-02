@@ -28,9 +28,18 @@ namespace SimpleDI
 	//		void OnFetchFromSnapshot(object injectState, object snapshotState);
 	//	}
 
-	interface IStatefulDependency<TInj, TSnap> // : IStatefulDependency
+	public delegate StateWrapper SelfWrapper();
+
+	public interface IStatefulDependency
 	{
-		// Note: Must not add overloads (reflection has been used with only the method names searched for)
+		// Note: Must not add overloads (reflection is used/may be used with only the method names searched for)
+
+		StateWrapper[] WrapSelf();
+	}
+
+	public interface IStatefulDependency<TInj, TSnap> // : IStatefulDependency
+	{
+		// Note: Must not add overloads (reflection is used/may be used with only the method names searched for)
 
 		/// <summary>
 		/// Returns an object containing any needed state which will be passed to the
@@ -48,6 +57,14 @@ namespace SimpleDI
 		TSnap OnSnapshot(TInj injectState);
 
 		void OnFetchFromSnapshot(TInj injectState, TSnap snapshotState);
+	}
+
+	public abstract class StatefulDependency : IStatefulDependency
+	{
+		private SelfWrapper[] wrapperDelegates = null;
+
+		StateWrapper[] IStatefulDependency.WrapSelf()
+			=> StateWrapper.HelpWrapSelf(this, ref this.wrapperDelegates);
 	}
 }
 

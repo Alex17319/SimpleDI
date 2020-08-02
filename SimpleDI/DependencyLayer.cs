@@ -255,121 +255,129 @@ namespace SimpleDI
 
 
 
-		protected static object[] RunOnInject(object dependency)
-		{
-			Type[] stateInterfaces = GetStatefulDependencyInterfaces(dependency.GetType());
-			if (stateInterfaces == null) return null;
+		protected private static StateWrapper[] WrapStateData(object dependency)
+			=> dependency is IStatefulDependency stateful ? stateful.WrapSelf() : null;
 
-			object[] injectState = new object[stateInterfaces.Length];
-			for (int i = 0; i < stateInterfaces.Length; i++) {
-				injectState[i] = stateInterfaces[i].GetMethod("OnInject").Invoke(dependency, null);
-				// Note: Fine to just search for "OnInject" without specifying parameters etc, as we're searching
-				// in the interface, which we have full control over.
-			}
-			return injectState;
-		}
-
-		protected static void RunOnFetch(object dependency, object[] injectState)
-		{
-			if (injectState == null) return;
-
-			Type[] stateInterfaces = GetStatefulDependencyInterfaces(dependency.GetType());
-
-			VerifyArrayLengths(stateInterfaces?.Length ?? 0, injectState.Length, -1);
-
-			for (int i = 0; i < stateInterfaces.Length; i++)
-			{
-				stateInterfaces[i].GetMethod("OnFetch").Invoke(dependency, new object[] { injectState[i] });
-				// Note: Fine to just search for "OnFetch" without specifying parameters etc, as we're searching
-				// in the interface, which we have full control over.
-			}
-		}
-
-		protected static object[] RunOnSnapshot(object dependency, object[] injectState)
-		{
-			if (injectState == null) return null;
-
-			Type[] stateInterfaces = GetStatefulDependencyInterfaces(dependency.GetType());
-
-			VerifyArrayLengths(stateInterfaces?.Length ?? 0, injectState.Length, -1);
-
-			object[] snapshotState = new object[stateInterfaces.Length];
-			for (int i = 0; i < stateInterfaces.Length; i++) {
-				snapshotState[i] = stateInterfaces[i].GetMethod("OnSnapshot").Invoke(dependency, new object[] { injectState[i] });
-				// Note: Fine to just search for "OnSnapshot" without specifying parameters etc, as we're searching
-				// in the interface, which we have full control over.
-			}
-			return snapshotState;
-		}
-
-		protected static void RunOnFetchFromSnapshot(object dependency, object[] injectState, object[] snapshotState)
-		{
-			if (injectState == null && snapshotState == null) return;
-
-			Type[] stateInterfaces = GetStatefulDependencyInterfaces(dependency.GetType());
-
-			VerifyArrayLengths(stateInterfaces?.Length ?? 0, injectState?.Length ?? 0, snapshotState?.Length ?? 0);
-
-			for (int i = 0; i < stateInterfaces.Length; i++)
-			{
-				stateInterfaces[i].GetMethod("OnFetchFromSnapshot").Invoke(dependency, new object[] { injectState[i] });
-				// Note: Fine to just search for "OnFetchFromSnapshot" without specifying parameters etc, as we're searching
-				// in the interface, which we have full control over.
-			}
-		}
-
-		/// <remarks>
-		/// Note: use dependency.GetType(), not the type toMatchAgainst or anything,
-		/// in order to allow dependency classes to make use of this without the code
-		/// that injects them needing to do anything different.
-		/// </remarks>
-		private static Type[] GetStatefulDependencyInterfaces(Type dependencyType)
-		{
-			if (!typeof(IStatefulDependency<,>).IsAssignableFrom(dependencyType)) return null;
-
-			return dependencyType.FindInterfaces(
-				(t, _) => t.IsConstructedGenericType && t.GetGenericTypeDefinition() == typeof(IStatefulDependency<,>),
-				null
-			);
-		}
-
-		/// <remarks>
-		/// Note: Use -1 for any parameter to indicate 'irrelevant'
-		/// </remarks>
-		private static void VerifyArrayLengths(int interfacesLen, int injectStateLen, int snapshotStateLen)
-		{
-			if (interfacesLen == 0 && injectStateLen > 0) throw new InvalidDIStateException(
-				$"Some inject-state data is stored but the dependency object does not " +
-				$"implement any variants of IStatefulDependency."
-			);
-
-			if (interfacesLen == 0 && snapshotStateLen > 0) throw new InvalidDIStateException(
-				$"Some snapshot-state data is stored but the dependency object does not " +
-				$"implement any variants of IStatefulDependency."
-			);
-
-			if (interfacesLen > 0 && injectStateLen == 0) throw new InvalidDIStateException(
-				$"The dependency object implements some variants of IStatefulDependency " +
-				$"but no inject-state data is stored."
-			);
-
-			if (interfacesLen > 0 && snapshotStateLen == 0) throw new InvalidDIStateException(
-				$"The dependency object implements some variants of IStatefulDependency " +
-				$"but no snapshot-state data is stored."
-			);
-
-			if (interfacesLen >= 0 && injectStateLen >= 0 && interfacesLen != injectStateLen) throw new InvalidDIStateException(
-				$"Dependency object has different number of IStatefulDependency " +
-				$"inteface variants than the number of stored pieces of inject-state data " +
-				$"({interfacesLen} interface varaiants, {injectStateLen} pieces of state data)."
-			);
-
-			if (interfacesLen >= 0 && snapshotStateLen >= 0 && interfacesLen != snapshotStateLen) throw new InvalidDIStateException(
-				$"Dependency object has different number of IStatefulDependency " +
-				$"inteface variants than the number of stored pieces of snapshot-state data " +
-				$"({interfacesLen} interface varaiants, {snapshotStateLen} pieces of state data)."
-			);
-		}
+		// TODO: May need to run some benchmarks later to compare this original version with the new version (which adds
+		// the InjectStateWrapper classes, switches StackedDependency to storing them instead of an array of objects[],
+		// adds RunOnInject etc methods to StackedDependency, and so on).
+		// The new version avoids doing reflection multiple times, but might have a cost of allocating more objects to
+		// the GC - though it may be possible to use structs for state data to counteract this cost.
+		//	protected static object[] RunOnInject(object dependency)
+		//	{
+		//		Type[] stateInterfaces = GetStatefulDependencyInterfaces(dependency.GetType());
+		//		if (stateInterfaces == null) return null;
+		//	
+		//		object[] injectState = new object[stateInterfaces.Length];
+		//		for (int i = 0; i < stateInterfaces.Length; i++) {
+		//			injectState[i] = stateInterfaces[i].GetMethod("OnInject").Invoke(dependency, null);
+		//			// Note: Fine to just search for "OnInject" without specifying parameters etc, as we're searching
+		//			// in the interface, which we have full control over.
+		//		}
+		//		return injectState;
+		//	}
+		//	
+		//	protected static void RunOnFetch(object dependency, object[] injectState)
+		//	{
+		//		if (injectState == null) return;
+		//	
+		//		Type[] stateInterfaces = GetStatefulDependencyInterfaces(dependency.GetType());
+		//	
+		//		VerifyArrayLengths(stateInterfaces?.Length ?? 0, injectState.Length, -1);
+		//	
+		//		for (int i = 0; i < stateInterfaces.Length; i++)
+		//		{
+		//			stateInterfaces[i].GetMethod("OnFetch").Invoke(dependency, new object[] { injectState[i] });
+		//			// Note: Fine to just search for "OnFetch" without specifying parameters etc, as we're searching
+		//			// in the interface, which we have full control over.
+		//		}
+		//	}
+		//	
+		//	protected static object[] RunOnSnapshot(object dependency, object[] injectState)
+		//	{
+		//		if (injectState == null) return null;
+		//	
+		//		Type[] stateInterfaces = GetStatefulDependencyInterfaces(dependency.GetType());
+		//	
+		//		VerifyArrayLengths(stateInterfaces?.Length ?? 0, injectState.Length, -1);
+		//	
+		//		object[] snapshotState = new object[stateInterfaces.Length];
+		//		for (int i = 0; i < stateInterfaces.Length; i++) {
+		//			snapshotState[i] = stateInterfaces[i].GetMethod("OnSnapshot").Invoke(dependency, new object[] { injectState[i] });
+		//			// Note: Fine to just search for "OnSnapshot" without specifying parameters etc, as we're searching
+		//			// in the interface, which we have full control over.
+		//		}
+		//		return snapshotState;
+		//	}
+		//	
+		//	protected static void RunOnFetchFromSnapshot(object dependency, object[] injectState, object[] snapshotState)
+		//	{
+		//		if (injectState == null && snapshotState == null) return;
+		//	
+		//		Type[] stateInterfaces = GetStatefulDependencyInterfaces(dependency.GetType());
+		//	
+		//		VerifyArrayLengths(stateInterfaces?.Length ?? 0, injectState?.Length ?? 0, snapshotState?.Length ?? 0);
+		//	
+		//		for (int i = 0; i < stateInterfaces.Length; i++)
+		//		{
+		//			stateInterfaces[i].GetMethod("OnFetchFromSnapshot").Invoke(dependency, new object[] { injectState[i] });
+		//			// Note: Fine to just search for "OnFetchFromSnapshot" without specifying parameters etc, as we're searching
+		//			// in the interface, which we have full control over.
+		//		}
+		//	}
+		//	
+		//	/// <remarks>
+		//	/// Note: use dependency.GetType(), not the type toMatchAgainst or anything,
+		//	/// in order to allow dependency classes to make use of this without the code
+		//	/// that injects them needing to do anything different.
+		//	/// </remarks>
+		//	private static Type[] GetStatefulDependencyInterfaces(Type dependencyType)
+		//	{
+		//		if (!typeof(IStatefulDependency<,>).IsAssignableFrom(dependencyType)) return null;
+		//	
+		//		return dependencyType.FindInterfaces(
+		//			(t, _) => t.IsConstructedGenericType && t.GetGenericTypeDefinition() == typeof(IStatefulDependency<,>),
+		//			null
+		//		);
+		//	}
+		//	
+		//	/// <remarks>
+		//	/// Note: Use -1 for any parameter to indicate 'irrelevant'
+		//	/// </remarks>
+		//	private static void VerifyArrayLengths(int interfacesLen, int injectStateLen, int snapshotStateLen)
+		//	{
+		//		if (interfacesLen == 0 && injectStateLen > 0) throw new InvalidDIStateException(
+		//			$"Some inject-state data is stored but the dependency object does not " +
+		//			$"implement any variants of IStatefulDependency."
+		//		);
+		//	
+		//		if (interfacesLen == 0 && snapshotStateLen > 0) throw new InvalidDIStateException(
+		//			$"Some snapshot-state data is stored but the dependency object does not " +
+		//			$"implement any variants of IStatefulDependency."
+		//		);
+		//	
+		//		if (interfacesLen > 0 && injectStateLen == 0) throw new InvalidDIStateException(
+		//			$"The dependency object implements some variants of IStatefulDependency " +
+		//			$"but no inject-state data is stored."
+		//		);
+		//	
+		//		if (interfacesLen > 0 && snapshotStateLen == 0) throw new InvalidDIStateException(
+		//			$"The dependency object implements some variants of IStatefulDependency " +
+		//			$"but no snapshot-state data is stored."
+		//		);
+		//	
+		//		if (interfacesLen >= 0 && injectStateLen >= 0 && interfacesLen != injectStateLen) throw new InvalidDIStateException(
+		//			$"Dependency object has different number of IStatefulDependency " +
+		//			$"inteface variants than the number of stored pieces of inject-state data " +
+		//			$"({interfacesLen} interface varaiants, {injectStateLen} pieces of state data)."
+		//		);
+		//	
+		//		if (interfacesLen >= 0 && snapshotStateLen >= 0 && interfacesLen != snapshotStateLen) throw new InvalidDIStateException(
+		//			$"Dependency object has different number of IStatefulDependency " +
+		//			$"inteface variants than the number of stored pieces of snapshot-state data " +
+		//			$"({interfacesLen} interface varaiants, {snapshotStateLen} pieces of state data)."
+		//		);
+		//	}
 
 
 

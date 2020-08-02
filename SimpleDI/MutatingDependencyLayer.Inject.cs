@@ -145,6 +145,13 @@ namespace SimpleDI
 		// generic type parameter, etc. Or maybe it can be??
 		private void addToStack_internal(object dependency, Type toMatchAgainst)
 		{
+			var toPush = new StackedDependency(currentStackLevel + 1, dependency, WrapStateData(dependency));
+
+			// Must only call RunOnInject() AFTER checking to throw any exceptions.
+			// Must also only call it BEFORE any lasting changes are made, in case it throws an exception.
+			// TODO: Check if there's built-in exceptions that could occur, and check that there's no
+			// possible lasting changes. OutOfMemoryException etc is probably OK, but need to think it through.
+
 			if (_dependencyStacks.TryGetValue(toMatchAgainst, out var stack))
 			{
 				if (stack.Peek().stackLevel == currentStackLevel + 1) throw new InvalidOperationException(
@@ -162,17 +169,17 @@ namespace SimpleDI
 					$"inner code to both Fetch() the group and Fetch() just the first element (for example) then inject" +
 					$"e.g. both the List<T> and the instance of T."
 				);
-				stack.Push(whatToPush());
+
+				toPush.RunOnInject();
+
+				stack.Push(toPush);
 			}
 			else
 			{
-				_dependencyStacks.Add(toMatchAgainst, new SearchableStack<StackedDependency> { whatToPush() });
-			}
+				toPush.RunOnInject();
 
-			// Must only call this (i.e. call RunOnInject()) AFTER checking to throw any exceptions.
-			// Must also only call it BEFORE any lasting changes are made, in case it throws an exception.
-			// TODO: Check if there's built-in exceptions that could occur, and check that there's no lasting changes.
-			StackedDependency whatToPush() => new StackedDependency(currentStackLevel + 1, dependency, RunOnInject(dependency));
+				_dependencyStacks.Add(toMatchAgainst, new SearchableStack<StackedDependency> { toPush });
+			}
 		}
 
 

@@ -65,6 +65,8 @@
     <Compile Include="DependencySnapshot.cs" />
     <Compile Include="RefEqualityComparer.cs" />
     <Compile Include="SafeDependencyLayer.cs" />
+    <Compile Include="SnapshotStateWrapper.cs" />
+    <Compile Include="StateWrapper.cs" />
     <Compile Include="TryGet\Logic.cs" />
     <Compile Include="Utility Classes\ArgumentTypeException.cs" />
     <Compile Include="Dependencies.cs" />
