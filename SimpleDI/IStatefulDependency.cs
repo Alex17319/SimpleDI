@@ -8,32 +8,15 @@ using System.Threading.Tasks;
 
 namespace SimpleDI
 {
-	//	interface IStatefulDependency
-	//	{
-	//		/// <summary>
-	//		/// Returns an object containing any needed state which will be passed to the
-	//		/// <see cref="OnFetch(object)"/>, <see cref="OnSnapshot(object)"/>,
-	//		/// and <see cref="OnFetchFromSnapshot(object, object)"/> methods as 'injectState'.
-	//		/// </summary>
-	//		object OnInject();
-	//	
-	//		void OnFetch(object injectState);
-	//	
-	//		/// <summary>
-	//		/// Returns an object containing any needed state which will be passed to the
-	//		/// <see cref="OnFetchFromSnapshot(object)"/> method as 'snapshotState'.
-	//		/// </summary>
-	//		object OnSnapshot(object injectState);
-	//	
-	//		void OnFetchFromSnapshot(object injectState, object snapshotState);
-	//	}
-
 	public delegate StateWrapper SelfWrapper();
 
 	public interface IStatefulDependency
 	{
 		// Note: Must not add overloads (reflection is used/may be used with only the method names searched for)
 
+		/// <summary>
+		/// Should be implemented using <see cref="StateWrapper.HelpWrapSelf(IStatefulDependency, ref SelfWrapper[])"/>.
+		/// </summary>
 		StateWrapper[] WrapSelf();
 	}
 
