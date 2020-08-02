@@ -100,34 +100,34 @@ namespace SimpleDI
 		public static SimultaneousInjectFrame BeginSimultaneousInject()
 			=> CurrentLayer.BeginSimultaneousInject();
 
-		public static FetchFrame Fetch<T>(out T dependency)
+		public static void Fetch<T>(out T dependency)
 			=> CurrentLayer.Fetch(out dependency, useFallbacks: true);
 
-		public static FetchFrame FetchOrNull<T>(out T dependency) where T : class
+		public static void FetchOrNull<T>(out T dependency) where T : class
 			=> CurrentLayer.FetchOrNull(out dependency, useFallbacks: true);
 
-		public static FetchFrame FetchOrNull<T>(out T? dependency) where T : struct
+		public static void FetchOrNull<T>(out T? dependency) where T : struct
 			=> CurrentLayer.FetchOrNull(out dependency, useFallbacks: true);
 
-		public static FetchFrame FetchNullableOrNull<T>(out T? dependency) where T : struct
+		public static void FetchNullableOrNull<T>(out T? dependency) where T : struct
 			=> CurrentLayer.FetchNullableOrNull(out dependency, useFallbacks: true);
 
-		public static FetchFrame TryFetch<T>(out T dependency, out bool found)
+		public static void TryFetch<T>(out T dependency, out bool found)
 			=> CurrentLayer.TryFetch(out dependency, out found, useFallbacks: true);
 
-		public static FetchFrame FetchOuter<TOuter>(object self, out TOuter outerDependency)
-			=> CurrentLayer.FetchOuter(self, out outerDependency, useFallbacks: true);
-
-		public static FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter outerDependency) where TOuter : class
-			=> CurrentLayer.FetchOuterOrNull(self, out outerDependency, useFallbacks: true);
-
-		public static FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter? outerDependency) where TOuter : struct
-			=> CurrentLayer.FetchOuterOrNull(self, out outerDependency, useFallbacks: true);
-
-		public static FetchFrame FetchOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency) where TOuter : struct
-			=> CurrentLayer.FetchOuterNullableOrNull(self, out outerDependency, useFallbacks: true);
-
-		public static FetchFrame TryFetchOuter<TOuter>(object self, out TOuter outerDependency, out bool found)
-			=> CurrentLayer.TryFetchOuter(self, out outerDependency, out found, useFallbacks: true);
+		//	public static FetchFrame FetchOuter<TOuter>(object self, out TOuter outerDependency)
+		//		=> CurrentLayer.FetchOuter(self, out outerDependency, useFallbacks: true);
+		//	
+		//	public static FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter outerDependency) where TOuter : class
+		//		=> CurrentLayer.FetchOuterOrNull(self, out outerDependency, useFallbacks: true);
+		//	
+		//	public static FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter? outerDependency) where TOuter : struct
+		//		=> CurrentLayer.FetchOuterOrNull(self, out outerDependency, useFallbacks: true);
+		//	
+		//	public static FetchFrame FetchOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency) where TOuter : struct
+		//		=> CurrentLayer.FetchOuterNullableOrNull(self, out outerDependency, useFallbacks: true);
+		//	
+		//	public static FetchFrame TryFetchOuter<TOuter>(object self, out TOuter outerDependency, out bool found)
+		//		=> CurrentLayer.TryFetchOuter(self, out outerDependency, out found, useFallbacks: true);
 	}
 }

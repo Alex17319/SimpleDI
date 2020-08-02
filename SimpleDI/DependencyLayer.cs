@@ -126,28 +126,17 @@ namespace SimpleDI
 		protected abstract InjectFrame InjectInternal(object dependency, Type toMatchAgainst);
 
 
-		//	private protected abstract bool TryGetFromFetchRecords(object self, out FetchRecord mostRecentFetch);
-
 		private protected abstract bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
 
 		protected static bool StealthTryFetch<T>(DependencyLayer @this, out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
 			=> @this.StealthTryFetch(out dependency, out stackLevel, useFallbacks, out layerFoundIn);
-
-		//	/// <summary>
-		//	/// Given that a previous fetch found some dependency in the current layer at a particular stack level,
-		//	/// this method looks for dependencies in outer stack levels (stricly not equal), and optionally
-		//	/// fallback layers as well.
-		//	/// </summary>
-		//	private protected abstract bool StealthTryFetchOuter<TOuter>(int prevFetchStackLevelFoundAt, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
-		//	
-		//	private protected abstract void AddToFetchRecord(object dependency, DependencyLayer layerFoundIn, int stackLevelFoundAt, out FetchRecord prevFetch);
 
 
 
 		internal abstract void CloseInjectFrame(InjectFrame frame);
 		internal abstract void CloseInjectFrame(SimultaneousInjectFrame frame);
 
-		private protected abstract void CloseFetchedDependency(FetchFrame frame);
+		//	private protected abstract void CloseFetchedDependency(FetchFrame frame);
 
 
 		/// <summary>
@@ -195,11 +184,10 @@ namespace SimpleDI
 		/// <exception cref="DependencyNotFoundException">
 		/// No dependency against type <typeparamref name="T"/> is available.
 		/// </exception>
-		public FetchFrame Fetch<T>(out T dependency, bool useFallbacks)
+		public void Fetch<T>(out T dependency, bool useFallbacks)
 		{
-			FetchFrame result = TryFetch(out dependency, out bool found, useFallbacks);
+			TryFetch(out dependency, out bool found, useFallbacks);
 			if (!found) throw new DependencyNotFoundException(typeof(T));
-			return result;
 		}
 
 		/// <summary>
@@ -209,12 +197,11 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public FetchFrame FetchOrNull<T>(out T dependency, bool useFallbacks)
+		public void FetchOrNull<T>(out T dependency, bool useFallbacks)
 			where T : class
 		{
-			FetchFrame result = TryFetch(out dependency, out bool found, useFallbacks);
+			TryFetch(out dependency, out bool found, useFallbacks);
 			if (!found) dependency = null;
-			return result;
 		}
 
 		/// <summary>
@@ -226,12 +213,11 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public FetchFrame FetchOrNull<T>(out T? dependency, bool useFallbacks)
+		public void FetchOrNull<T>(out T? dependency, bool useFallbacks)
 			where T : struct
 		{
-			FetchFrame result = TryFetch(out T dep, out bool found, useFallbacks);
+			TryFetch(out T dep, out bool found, useFallbacks);
 			dependency = found ? dep : (T?)null;
-			return result;
 		}
 
 		/// <summary>
@@ -248,12 +234,11 @@ namespace SimpleDI
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dependency"></param>
 		/// <returns></returns>
-		public FetchFrame FetchNullableOrNull<T>(out T? dependency, bool useFallbacks)
+		public void FetchNullableOrNull<T>(out T? dependency, bool useFallbacks)
 			 where T : struct
 		{
-			FetchFrame result = TryFetch(out dependency, out bool found, useFallbacks);
+			TryFetch(out dependency, out bool found, useFallbacks);
 			if (!found) dependency = null;
-			return result;
 		}
 
 		/// <summary>
@@ -264,7 +249,7 @@ namespace SimpleDI
 		/// <param name="dependency"></param>
 		/// <param name="found"></param>
 		/// <returns></returns>
-		public FetchFrame TryFetch<T>(out T dependency, out bool found, bool useFallbacks)
+		public void TryFetch<T>(out T dependency, out bool found, bool useFallbacks)
 		{
 			int stackLevelBeforeFetch = this.CurrentStackLevel;
 
@@ -275,225 +260,18 @@ namespace SimpleDI
 				out var layerFoundIn)
 			) {
 				found = false;
-				return FetchFrame.CleanupFree;
+				return;
 			}
 
 			// Fail if a null has been added to hide earlier dependencies
 			// TODO: Should it be possible to hide non-nullable value type dependencies?? Currently isn't
 			if (dependency == null) {
 				found = false;
-				return FetchFrame.CleanupFree;
+				return;
 			}
 
 			found = true;
-
-			if (typeof(T).IsValueType) return FetchFrame.CleanupFree;
-
-			//	// If the dependency is a reference-type (and was found), then need to add to _fetchRecords so that the
-			//	// dependency can look up what dependencies were available when it was originally injected.
-			//	// Must only add to/modify the current layer's records (as we must only modify the current layer in general).
-			//	this.AddToFetchRecord(dependency, layerFoundIn, stackLevel, out var prevFetch);
-
-			return new FetchFrame(layerSearchingFrom: this, dependency, /*prevFetch,*/ stackLevelBeforeFetch);
 		}
-
-
-
-		//	/// <summary>
-		//	/// <see langword="[Call inside using()]"></see>
-		//	/// Fetches an outer dependency, or throws a <see cref="DependencyNotFoundException"/> if it could not be found.
-		//	/// <para/>
-		//	/// See <see cref="TryFetchOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
-		//	/// </summary>
-		//	/// <typeparam name="TOuter"></typeparam>
-		//	/// <param name="self"></param>
-		//	/// <param name="outerDependency"></param>
-		//	/// <returns></returns>
-		//	/// <exception cref="DependencyNotFoundException">
-		//	/// No dependency against type <typeparamref name="TOuter"/> was available when <paramref name="self"/> was injected
-		//	/// </exception>
-		//	/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
-		//	/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
-		//	/// <exception cref="ArgumentException">
-		//	/// There is no record of <paramref name="self"/> having been fetched previously
-		//	/// </exception>
-		//	public FetchFrame FetchOuter<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
-		//	{
-		//		FetchFrame result = TryFetchOuter(self, out outerDependency, out bool found, useFallbacks);
-		//		if (!found) throw new DependencyNotFoundException(typeof(TOuter));
-		//		return result;
-		//	}
-		//	
-		//	/// <summary>
-		//	/// <see langword="[Call inside using()]"></see>
-		//	/// Fetches an outer dependency, or returns null if it could not be found.
-		//	/// <para/>
-		//	/// See <see cref="TryFetchOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
-		//	/// </summary>
-		//	/// <typeparam name="TOuter"></typeparam>
-		//	/// <param name="self"></param>
-		//	/// <param name="outerDependency"></param>
-		//	/// <returns></returns>
-		//	/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
-		//	/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
-		//	/// <exception cref="ArgumentException">
-		//	/// There is no record of <paramref name="self"/> having been fetched previously
-		//	/// </exception>
-		//	public FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter outerDependency, bool useFallbacks)
-		//		where TOuter : class
-		//	{
-		//		FetchFrame result = TryFetchOuter(self, out outerDependency, out bool found, useFallbacks);
-		//		if (!found) outerDependency = null;
-		//		return result;
-		//	}
-		//	
-		//	/// <summary>
-		//	/// <see langword="[Call inside using()]"></see>
-		//	/// Fetches an outer dependency of type T (not nullable), and returns it (or else null) via a nullable T? parameter.
-		//	/// <para/>
-		//	/// See <see cref="TryFetchOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
-		//	/// </summary>
-		//	/// <typeparam name="TOuter"></typeparam>
-		//	/// <param name="self"></param>
-		//	/// <param name="outerDependency"></param>
-		//	/// <returns></returns>
-		//	/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
-		//	/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
-		//	/// <exception cref="ArgumentException">
-		//	/// There is no record of <paramref name="self"/> having been fetched previously
-		//	/// </exception>
-		//	public FetchFrame FetchOuterOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
-		//		where TOuter : struct
-		//	{
-		//		FetchFrame result = TryFetchOuter(self, out TOuter oDep, out bool found, useFallbacks);
-		//		outerDependency = found ? oDep : (TOuter?)null;
-		//		return result;
-		//	}
-		//	
-		//	/// <summary>
-		//	/// <see langword="[Call inside using()]"></see>
-		//	/// Fetches an outer dependency of type T? (nullable), and returns it (or else null) via a nullable T? parameter.
-		//	/// <para/>
-		//	/// See <see cref="TryFetchOuter{TOuter}(object, out TOuter, out bool, bool)"/>.
-		//	/// </summary>
-		//	/// <remarks>
-		//	/// Note that null nullable instances (eg new int?()) are boxed to true null pointers (and then treated
-		//	/// as blocking the visibility of dependencies further out) - so searching for TOuter? doesn't introduce
-		//	/// two different types of null values or anything.
-		//	/// </remarks>
-		//	/// <typeparam name="TOuter"></typeparam>
-		//	/// <param name="self"></param>
-		//	/// <param name="outerDependency"></param>
-		//	/// <returns></returns>
-		//	/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
-		//	/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
-		//	/// <exception cref="ArgumentException">
-		//	/// There is no record of <paramref name="self"/> having been fetched previously
-		//	/// </exception>
-		//	public FetchFrame FetchOuterNullableOrNull<TOuter>(object self, out TOuter? outerDependency, bool useFallbacks)
-		//		 where TOuter : struct
-		//	{
-		//		FetchFrame result = TryFetchOuter(self, out outerDependency, out bool found, useFallbacks);
-		//		if (!found) outerDependency = null;
-		//		return result;
-		//	}
-		//	
-		//	/// <summary>
-		//	///	<see langword="[Call inside using()]"></see>
-		//	/// Once a dependency has been retrieved, it may call this method to find
-		//	/// dependencies that were in place when it was originally injected.
-		//	/// </summary>
-		//	/// <remarks>
-		//	/// If the same depencency object has been injected multiple times,
-		//	/// the most recently fetched injection will be used.
-		//	/// <para/>
-		//	/// Only reference-type dependencies may make use of this method, as reference-equality is used
-		//	/// to perform the lookup.
-		//	/// </remarks>
-		//	/// <typeparam name="TOuter">The type of outer dependency to fetch</typeparam>
-		//	/// <param name="self"></param>
-		//	/// <param name="outerDependency"></param>
-		//	/// <param name="found"></param>
-		//	/// <returns></returns>
-		//	/// <exception cref="ArgumentNullException"><paramref name="self"/> is null</exception>
-		//	/// <exception cref="ArgumentTypeException"><paramref name="self"/> is an instance of a value-type</exception>
-		//	/// <exception cref="ArgumentException">
-		//	/// There is no record of <paramref name="self"/> having been fetched previously
-		//	/// </exception>
-		//	public FetchFrame TryFetchOuter<TOuter>(object self, out TOuter outerDependency, out bool found, bool useFallbacks)
-		//	{
-		//		if (self == null) throw new ArgumentNullException(nameof(self));
-		//	
-		//		if (self.GetType().IsValueType) throw new ArgumentTypeException(
-		//			$"Only reference-type dependencies may fetch outer dependencies from when they were injected. " +
-		//			$"Object '{self}' is of type '{self.GetType().FullName}', which is a value-type.",
-		//			nameof(self)
-		//		);
-		//	
-		//		int stackLevelBeforeFetch = this.CurrentStackLevel;
-		//	
-		//		if (!this.tryFetchOuterInternal(
-		//			self,
-		//			out outerDependency,
-		//			out int outerStackLevel,
-		//			useFallbacks,
-		//			out var layerOuterFoundIn
-		//		)) {
-		//			outerDependency = default;
-		//			found = false;
-		//			return FetchFrame.CleanupFree;
-		//		}
-		//	
-		//		// Fail if a null has been added to hide earlier dependencies
-		//		// TODO: Should it be possible to hide non-nullable value type dependencies?? Currently isn't
-		//		if (outerDependency == null) {
-		//			found = false;
-		//			return FetchFrame.CleanupFree;
-		//		}
-		//	
-		//		found = true;
-		//	
-		//		// Now add to the current layer's _fetchRecords that the outer dependency was just fetched
-		//		this.AddToFetchRecord(outerDependency, layerOuterFoundIn, outerStackLevel, out FetchRecord prevOuterFetch);
-		//	
-		//		return new FetchFrame(layerSearchingFrom: this, outerDependency, prevOuterFetch, stackLevelBeforeFetch);
-		//	}
-		//	
-		//	private bool tryFetchOuterInternal<TOuter>(object self, out TOuter dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-		//	{
-		//		// Try to find a fetch record locally
-		//		// If we can't, then try to use fallbacks if possible, calling the current method recursively, and return
-		//		if (!this.TryGetFromFetchRecords(self, out FetchRecord mostRecentFetch))
-		//		{
-		//			if (!useFallbacks || this.Fallback == null) throw new ArgumentException(
-		//				$"No record is available of a dependency fetch having been performed for object '{self}' " +
-		//				$"(of type '{self.GetType().FullName}'). " +
-		//				$"Depending on how this occurred (incorrect call or invalid state), continued operation may be undefined."
-		//			);
-		//	
-		//			return Logic.SucceedIf(this.Fallback.tryFetchOuterInternal(
-		//				self,
-		//				out dependency,
-		//				out stackLevel,
-		//				useFallbacks,
-		//				out layerFoundIn
-		//			));
-		//		}
-		//		
-		//		// The fetch record must have been found locally if this point is reached
-		//		// If it was in a fallback, then that was found using this method recursively, and we've already returned.
-		//		
-		//		// However, that isn't the same thing as it representing a local dependency having been fetched,
-		//		// just that the record is stored locally. Either way, go to the layer from which the dependency
-		//		// was fetched, and from there search for outer dependencies
-		//		return Logic.SucceedIf(mostRecentFetch.layerFoundAt.StealthTryFetchOuter(
-		//			mostRecentFetch.stackLevelFoundAt,
-		//			out dependency,
-		//			out stackLevel,
-		//			useFallbacks,
-		//			out layerFoundIn
-		//		));
-		//	}
 
 
 
@@ -614,34 +392,34 @@ namespace SimpleDI
 		}
 
 
-		internal void CloseFetchFrame(FetchFrame frame)
-		{
-			if (frame.IsCleanupFree) return;
+		//	internal void CloseFetchFrame(FetchFrame frame)
+		//	{
+		//		if (frame.IsCleanupFree) return;
+		//	
+		//		if (frame.layerSearchingFrom != this) throw new InjectFrameCloseException(
+		//			$"Cannot close fetch frame as it does not belong to the current dependency layer " +
+		//			$"(current layer = '{this}', " +
+		//			$"{nameof(frame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{frame.layerSearchingFrom}')"
+		//		);
+		//	
+		//		CloseFetchedDependency(frame);
+		//	}
 
-			if (frame.layerSearchingFrom != this) throw new InjectFrameCloseException(
-				$"Cannot close fetch frame as it does not belong to the current dependency layer " +
-				$"(current layer = '{this}', " +
-				$"{nameof(frame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{frame.layerSearchingFrom}')"
-			);
-
-			CloseFetchedDependency(frame);
-		}
-
-		internal void CloseFetchFrame(MultiFetchFrame multiFrame)
-		{
-			if (multiFrame.IsCleanupFree) return;
-
-			if (multiFrame.layerSearchingFrom != this) throw new InjectFrameCloseException(
-				$"Cannot close fetch frame as it does not belong to the current dependency layer " +
-				$"(current layer = '{this}', " +
-				$"{nameof(multiFrame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{multiFrame.layerSearchingFrom}')"
-			);
-
-			foreach (FetchFrame f in multiFrame.frames)
-			{
-				CloseFetchedDependency(f);
-			}
-		}
+		//	internal void CloseFetchFrame(MultiFetchFrame multiFrame)
+		//	{
+		//		if (multiFrame.IsCleanupFree) return;
+		//	
+		//		if (multiFrame.layerSearchingFrom != this) throw new InjectFrameCloseException(
+		//			$"Cannot close fetch frame as it does not belong to the current dependency layer " +
+		//			$"(current layer = '{this}', " +
+		//			$"{nameof(multiFrame)}.{nameof(FetchFrame.layerSearchingFrom)} = '{multiFrame.layerSearchingFrom}')"
+		//		);
+		//	
+		//		foreach (FetchFrame f in multiFrame.frames)
+		//		{
+		//			CloseFetchedDependency(f);
+		//		}
+		//	}
 
 
 

@@ -29,10 +29,6 @@ namespace SimpleDI
 		private readonly Dictionary<Type, SearchableStack<StackedDependency>> _dependencyStacks
 			= new Dictionary<Type, SearchableStack<StackedDependency>>();
 
-		//	// Maps from a dependency that has been fetched to the stack level that it was originally injected at
-		//	private readonly Dictionary<object, FetchRecord> _fetchRecords
-		//		= new Dictionary<object, FetchRecord>(new RefEqualityComparer());
-
 		private int currentStackLevel = 0;
 
 		protected override int CurrentStackLevel => currentStackLevel;
