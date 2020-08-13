@@ -22,14 +22,6 @@ namespace SimpleDI
 
 	public abstract class StateWrapper : IStateWrapper
 	{
-		//	private StateWrapper CallWrapSelf<TInj, TSnap>(IStatefulDependency<TInj, TSnap> dependency)
-		//		=> dependency.WrapSelf();
-
-		//	//Note: Accessed via reflection
-		//	private delegate StateWrapper<TInj, TSnap> WrapperDelegate<TInj, TSnap>(IStatefulDependency<TInj, TSnap> dependency);
-
-		
-
 		// TODO: Test that this doesn't lock when reading, & so won't slow down other threads too much (except when still
 		// loading stuff up)
 		// Otherwise may need to use something threadstatic but that'll add duplicate data & keep getting
@@ -46,13 +38,9 @@ namespace SimpleDI
 		void IStateWrapper.RunOnFetch() => RunOnFetch();
 		ISnapshotStateWrapper IStateWrapper.RunOnSnapshot() => RunOnSnapshot();
 
-		//Note: Accessed via reflection. Do not overload
-		private static StateWrapper<TInj, TSnap> WrapInternal<TInj, TSnap>(IStatefulDependency<TInj, TSnap> dependency)
-			=> new StateWrapper<TInj, TSnap>(dependency);
-
 		internal static IStateWrapper[] WrapDependencyState(object dependency)
 		{
-			if (!(dependency is IStatefulDependency statefulDep)) return null;
+			if (dependency == null || !(dependency is IStatefulDependency statefulDep)) return null;
 
 			Type dType = dependency.GetType();
 			if (!wrapperBuilders.TryGetValue(dType, out IWrapperBuilder[] builders)) {
@@ -70,23 +58,6 @@ namespace SimpleDI
 			// or if that's worse anyway with reallocation. Maybe if there's more nulls than some threshold?
 
 			return wrapped;
-
-			//	Type dType = dependency.GetType();
-			//	if (!wrapperDelLookup.TryGetValue(dType, out Delegate[] delegates)) {
-			//		// Fine to do separate calls (in regard to multithreading) - if another thread adds an entry
-			//		// for the same type in-between, then the second call will just have no effect, which is fine.
-			//		wrapperDelLookup.TryAdd(dType, MakeWrapperDelegates(statefulDep));
-			//	}
-			//	
-			//	var wrapped = new StateWrapper[delegates.Length];
-			//	for (int i = 0; i < delegates.Length; i++) {
-			//		wrapped[i] = delegates[i].;
-			//	}
-			//		
-			//	// TODO: See if we should remove any nulls here & copy to a smaller array to save space,
-			//	// or if that's worse anyway with reallocation. Maybe if more nulls than some threshold?
-			//		
-			//	return wrapped;
 		}
 
 		private static IWrapperBuilder[] MakeWrapperBuilders(IStatefulDependency dependency)
@@ -111,58 +82,15 @@ namespace SimpleDI
 			}
 
 			return builders;
-
-			//	Delegate[] delegates = new Delegate[stateInterfaces.Length];
-			//	
-			//	for (int i = 0; i < stateInterfaces.Length; i++) {
-			//		Type[] genericArgs = stateInterfaces[i].GenericTypeArguments;
-			//		delegates[i] = Delegate.CreateDelegate(
-			//			typeof(WrapperDelegate<,>)
-			//			.MakeGenericType(genericArgs),
-			//			typeof(StateWrapper)
-			//			.GetMethod("WrapInternal", BindingFlags.NonPublic | BindingFlags.Static)
-			//			.MakeGenericMethod(genericArgs)
-			//		);
-			//	}
-			//	
-			//	return delegates;
 		}
 
-		//	/// <summary>
-		//	/// Used to implement <see cref="IStatefulDependency"/> - see remarks for example.
-		//	/// </summary>
-		//	/// <remarks>
-		//	/// Example usage:
-		//	/// <code>
-		//	/// public abstract class StatefulDependency : IStatefulDependency
-		//	/// {
-		//	/// 	private SelfWrapper[] wrapperDelegates = null;
-		//	/// 
-		//	/// 	StateWrapper[] IStatefulDependency.WrapSelf()
-		//	/// 		=> StateWrapper.HelpWrapSelf(this, ref this.wrapperDelegates);
-		//	/// }
-		//	/// </code>
-		//	/// </remarks>
-		//	public static StateWrapper[] HelpWrapSelf(IStatefulDependency self, ref SelfWrapper[] wrapperDelegates)
-		//	{
-		//		wrapperDelegates = wrapperDelegates ?? PrepareWrap(self);
-		//	
-		//		var wrapped = new StateWrapper[wrapperDelegates.Length];
-		//		for (int i = 0; i < wrapperDelegates.Length; i++) {
-		//			wrapped[i] = wrapperDelegates[i]();
-		//		}
-		//	
-		//		// TODO: See if we should remove any nulls here & copy to a smaller array to save space,
-		//		// or if that's worse anyway with reallocation. Maybe if more nulls than some threshold?
-		//	
-		//		return wrapped;
-		//	}
-
 		private interface IWrapperBuilder {
+			//Note: Accessed via reflection
 			IStateWrapper Wrap(IStatefulDependency dep);
 		}
 
 		private class WrapperBuilder<TInj, TSnap> : IWrapperBuilder {
+			//Note: Accessed via reflection
 			public IStateWrapper Wrap(IStatefulDependency dep)
 				=> new StateWrapper<TInj, TSnap>((IStatefulDependency<TInj, TSnap>)dep);
 		}

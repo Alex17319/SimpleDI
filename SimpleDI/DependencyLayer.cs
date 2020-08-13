@@ -254,7 +254,7 @@ namespace SimpleDI
 		// the InjectStateWrapper classes, switches StackedDependency to storing them instead of an array of objects[],
 		// adds RunOnInject etc methods to StackedDependency, and so on).
 		// The new version avoids doing reflection multiple times, but might have a cost of allocating more objects to
-		// the GC - though it may be possible to use structs for state data to counteract this cost.
+		// the GC - though it may now be possible to use structs for state data to counteract this cost.
 		//	protected static object[] RunOnInject(object dependency)
 		//	{
 		//		Type[] stateInterfaces = GetStatefulDependencyInterfaces(dependency.GetType());
