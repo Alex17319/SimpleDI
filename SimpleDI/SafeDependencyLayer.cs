@@ -21,7 +21,6 @@ namespace SimpleDI
 
 		private SnapshotableStack<StackFrame> _stack = new SnapshotableStack<StackFrame>(StackFrame.Base);
 
-		//private int currentStackLevel;
 		protected override int CurrentStackLevel => _stack.Count - 1;
 
 
@@ -84,32 +83,20 @@ namespace SimpleDI
 
 		private struct StackFrame
 		{
-			//public readonly int stackLevel;
-
 			public readonly ImmutableDictionary<Type, StackedDependency> dependencies;
-
-			//	// Maps from a dependency that has been fetched to the stack level that it was originally injected at
-			//	public readonly ImmutableDictionary<object, FetchRecord> fetchRecords;
 
 			public static readonly StackFrame Null = default;
 			public bool IsNull => this.dependencies == null;
 
 			public static readonly StackFrame Base = new StackFrame(
-				//0,
 				ImmutableDictionary.Create<Type, StackedDependency>()
 			);
 
-			public bool IsBase
-				=> //this.stackLevel == Base.stackLevel
-				ReferenceEquals(this.dependencies, Base.dependencies);
+			public bool IsBase => ReferenceEquals(this.dependencies, Base.dependencies);
 
 			public StackFrame(
-				//int stackLevel,
 				ImmutableDictionary<Type, StackedDependency> dependencies
 			) {
-				//if (stackLevel < 0) throw new ArgumentOutOfRangeException(nameof(stackLevel), stackLevel, "Cannot be negative");
-
-				//this.stackLevel = stackLevel;
 				this.dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
 			}
 		}
