@@ -66,23 +66,19 @@ namespace SimpleDI
 			throw new NotImplementedException();
 		}
 
-		// Returns true if any dependency was successfully found, even if it's null
-		private protected override bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+		public override bool TryFetch<T>(out T dependency, bool useFallbacks)
 			=> _stack.Peek().dependencies.TryGetValue(typeof(T), out StackedDependency dep)
-			? Logic.Succeed(
-				out dependency, (T)dep.dependency,
-				out stackLevel, dep.stackLevel,
-				out layerFoundIn, this
+			? Logic.SucceedIf(
+				!dep.IsNull,
+				out dependency, (T)dep.dependency
 			)
 			: useFallbacks
-			? Logic.SucceedIf(DependencyLayer.StealthTryFetch(
+			? Logic.SucceedIf(DependencyLayer.TryFetch(
 				this.Fallback,
 				out dependency,
-				out stackLevel,
-				useFallbacks,
-				out layerFoundIn
+				useFallbacks
 			))
-			: Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+			: Logic.Fail(out dependency);
 
 
 
