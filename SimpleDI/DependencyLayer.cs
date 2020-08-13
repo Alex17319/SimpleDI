@@ -1,5 +1,6 @@
 ﻿using SimpleDI.TryGet;
 using System;
+using System.Collections.Immutable;
 
 namespace SimpleDI
 {
@@ -34,9 +35,17 @@ namespace SimpleDI
 		/// </summary>
 		public DependencyLayer Fallback { get; }
 
-		//public abstract bool SnapshotReady { get; }
+		public abstract bool SnapshotReady { get; }
 
-		//public abstract DependencySnapshot Snapshot { get; }
+		public abstract DependencySnapshot Snapshot(bool useFallbacks);
+		private protected abstract void AddAsFallbackToSnapshot(
+			ImmutableDictionary<Type, SnapshottedDependency>.Builder snapshotBuilder
+		);
+
+		private protected static void AddAsFallbackToSnapshot(
+			DependencyLayer fallback,
+			ImmutableDictionary<Type, SnapshottedDependency>.Builder snapshotBuilder
+		) => fallback.AddAsFallbackToSnapshot(snapshotBuilder);
 
 		protected bool Disposed { get; private set; } = false;
 
@@ -238,8 +247,8 @@ namespace SimpleDI
 
 
 
-		protected private static StateWrapper[] WrapStateData(object dependency)
-			=> dependency is IStatefulDependency stateful ? stateful.WrapSelf() : null;
+		//	protected private static StateWrapper[] WrapStateData(object dependency)
+		//		=> dependency is IStatefulDependency stateful ? stateful.WrapSelf() : null;
 
 		// TODO: May need to run some benchmarks later to compare this original version with the new version (which adds
 		// the InjectStateWrapper classes, switches StackedDependency to storing them instead of an array of objects[],

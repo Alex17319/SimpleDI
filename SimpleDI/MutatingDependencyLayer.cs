@@ -33,9 +33,60 @@ namespace SimpleDI
 
 		protected override int CurrentStackLevel => currentStackLevel;
 
+		private DependencySnapshot _snapshot = DependencySnapshot.Null;
+		private void markSnapshotDirty() => _snapshot = DependencySnapshot.Null;
+		public override bool SnapshotReady => !_snapshot.IsNull;
+
 		internal MutatingDependencyLayer() : base() { }
 		internal MutatingDependencyLayer(DependencyLayer fallback) : base(fallback) { }
 
+
+
+		public override DependencySnapshot Snapshot(bool useFallbacks) {
+			if (SnapshotReady) return _snapshot;
+
+			
+			var builder = ImmutableDictionary.CreateBuilder<Type, SnapshottedDependency>();
+			builder.AddRange(enumerateDependencies());
+
+			IEnumerable<KeyValuePair<Type, SnapshottedDependency>> enumerateDependencies()
+			{
+				foreach (var kvp in _dependencyStacks)
+				{
+					if (kvp.Value.Count != 0) yield return new KeyValuePair<Type, SnapshottedDependency>(
+						kvp.Key,
+						kvp.Value.Peek().RunOnSnapshot()
+					);
+				}
+			}
+
+			var fb = this.Fallback;
+			while (useFallbacks && fb != null) {
+				DependencyLayer.AddAsFallbackToSnapshot(fb, builder);
+				fb = fb.Fallback;
+			}
+
+			return _snapshot = new DependencySnapshot(builder.ToImmutable());
+		}
+
+		private protected override void AddAsFallbackToSnapshot(
+			ImmutableDictionary<Type, SnapshottedDependency>.Builder snapshotBuilder
+		) {
+			snapshotBuilder.AddRange(enumerateAddableDependencies());
+			
+			IEnumerable<KeyValuePair<Type, SnapshottedDependency>> enumerateAddableDependencies()
+			{
+				foreach (var kvp in _dependencyStacks)
+				{
+					if (kvp.Value.Count != 0 && !snapshotBuilder.ContainsKey(kvp.Key)) {
+						yield return new KeyValuePair<Type, SnapshottedDependency>(
+							kvp.Key,
+							kvp.Value.Peek().RunOnSnapshot()
+						);
+					}
+				}
+			}
+		}
 
 
 		/// <summary>

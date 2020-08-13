@@ -8,21 +8,23 @@ using System.Threading.Tasks;
 
 namespace SimpleDI
 {
-	public delegate StateWrapper SelfWrapper();
+	//	public delegate StateWrapper SelfWrapper();
 
 	public interface IStatefulDependency
 	{
 		// Note: Must not add overloads (reflection is used/may be used with only the method names searched for)
 
-		/// <summary>
-		/// Should be implemented using <see cref="StateWrapper.HelpWrapSelf(IStatefulDependency, ref SelfWrapper[])"/>.
-		/// </summary>
-		StateWrapper[] WrapSelf();
+		//	/// <summary>
+		//	/// Should be implemented using <see cref="StateWrapper.HelpWrapSelf(IStatefulDependency, ref SelfWrapper[])"/>.
+		//	/// </summary>
+		//	StateWrapper[] WrapSelf();
 	}
 
-	public interface IStatefulDependency<TInj, TSnap> // : IStatefulDependency
+	public interface IStatefulDependency<TInj, TSnap> : IStatefulDependency
 	{
 		// Note: Must not add overloads (reflection is used/may be used with only the method names searched for)
+
+		//	StateWrapper<TInj, TSnap> WrapSelf();
 
 		/// <summary>
 		/// Returns an object containing any needed state which will be passed to the
@@ -42,13 +44,13 @@ namespace SimpleDI
 		void OnFetchFromSnapshot(TInj injectState, TSnap snapshotState);
 	}
 
-	public abstract class StatefulDependency : IStatefulDependency
-	{
-		private SelfWrapper[] wrapperDelegates = null;
-
-		StateWrapper[] IStatefulDependency.WrapSelf()
-			=> StateWrapper.HelpWrapSelf(this, ref this.wrapperDelegates);
-	}
+	//	public abstract class StatefulDependency : IStatefulDependency
+	//	{
+	//		private SelfWrapper[] wrapperDelegates = null;
+	//	
+	//		StateWrapper[] IStatefulDependency.WrapSelf()
+	//			=> StateWrapper.HelpWrapSelf(this, ref wrapperDelegates);
+	//	}
 }
 
 //*/

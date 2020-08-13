@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace SimpleDI
 {
-	internal interface ISnapshotStateWrapper
+	internal interface ISnapshotStateWrapper : IStateWrapper
 	{
 		void RunOnFetchFromSnapshot();
 	}
@@ -36,6 +36,10 @@ namespace SimpleDI
 
 		void ISnapshotStateWrapper.RunOnFetchFromSnapshot()
 			=> dependency.OnFetchFromSnapshot(injectState, snapshotState);
+
+		void IStateWrapper.RunOnInject() => RunOnInject();
+		void IStateWrapper.RunOnFetch() => RunOnFetch();
+		ISnapshotStateWrapper IStateWrapper.RunOnSnapshot() => RunOnSnapshot();
 	}
 }
 

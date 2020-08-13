@@ -18,11 +18,14 @@ namespace SimpleDI
 	public class SafeDependencyLayer : DependencyLayer
 	{
 
-
+		// TODO: If possible just directly use a stack of DependencySnapshots
+		// TODO: Switch from having a SnapshottedDependency struct to just using StackedDependency with a flag set,
+		// so that the immutable dictionary snapshot can be reused as a starting point for a layer as planned.
 		private SnapshotableStack<StackFrame> _stack = new SnapshotableStack<StackFrame>(StackFrame.Base);
 
 		protected override int CurrentStackLevel => _stack.Count - 1;
 
+		public override bool SnapshotReady => throw new NotImplementedException();
 
 		internal SafeDependencyLayer() : base() { }
 		internal SafeDependencyLayer(DependencyLayer fallback) : base(fallback) { }
@@ -79,7 +82,15 @@ namespace SimpleDI
 			))
 			: Logic.Fail(out dependency);
 
+		public override DependencySnapshot Snapshot(bool useFallbacks)
+		{
+			throw new NotImplementedException();
+		}
 
+		private protected override void AddAsFallbackToSnapshot(ImmutableDictionary<Type, SnapshottedDependency>.Builder snapshotBuilder)
+		{
+			throw new NotImplementedException();
+		}
 
 		private struct StackFrame
 		{

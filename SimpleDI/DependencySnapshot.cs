@@ -15,7 +15,18 @@ namespace SimpleDI
 {
 	public struct DependencySnapshot
 	{
-		
+		internal readonly ImmutableDictionary<Type, SnapshottedDependency> Dependencies;
+
+		public bool IsNull => Dependencies == null;
+		public static readonly DependencySnapshot Null = default;
+
+		public bool IsEmpty => !IsNull && Dependencies.IsEmpty;
+		public static readonly DependencySnapshot Empty = new DependencySnapshot(ImmutableDictionary.Create<Type, SnapshottedDependency>());
+
+		internal DependencySnapshot(ImmutableDictionary<Type, SnapshottedDependency> dependencies)
+		{
+			this.Dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
+		}
 	}
 }
 

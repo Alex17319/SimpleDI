@@ -145,7 +145,7 @@ namespace SimpleDI
 		// generic type parameter, etc. Or maybe it can be??
 		private void addToStack_internal(object dependency, Type toMatchAgainst)
 		{
-			var toPush = new StackedDependency(currentStackLevel + 1, dependency, WrapStateData(dependency));
+			var toPush = new StackedDependency(currentStackLevel + 1, dependency, StateWrapper.WrapDependencyState(dependency));
 
 			// Must only call RunOnInject() AFTER checking to throw any exceptions.
 			// Must also only call it BEFORE any lasting changes are made, in case it throws an exception.
@@ -172,12 +172,14 @@ namespace SimpleDI
 
 				toPush.RunOnInject();
 
+				markSnapshotDirty();
 				stack.Push(toPush);
 			}
 			else
 			{
 				toPush.RunOnInject();
 
+				markSnapshotDirty();
 				_dependencyStacks.Add(toMatchAgainst, new SearchableStack<StackedDependency> { toPush });
 			}
 		}
@@ -242,6 +244,7 @@ namespace SimpleDI
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
 
+			markSnapshotDirty();
 			stack.Pop();
 		}
 	}
