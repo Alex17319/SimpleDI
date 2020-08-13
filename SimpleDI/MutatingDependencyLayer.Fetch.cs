@@ -17,7 +17,7 @@ namespace SimpleDI
 {
 	public sealed partial class MutatingDependencyLayer
 	{
-		private protected override bool TryFetch<T>(out T dependency, bool useFallbacks)
+		public override bool TryFetch<T>(out T dependency, bool useFallbacks)
 		{
 			if (!this._dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {
 				// No stack found, or found stack is empty
