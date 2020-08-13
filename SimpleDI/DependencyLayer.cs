@@ -128,11 +128,13 @@ namespace SimpleDI
 		protected abstract InjectFrame InjectInternal(object dependency, Type toMatchAgainst);
 
 
-		private protected abstract bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
+		//	private protected abstract bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn);
+		private protected abstract bool TryFetch<T>(out T dependency, bool useFallbacks);
 
-		protected static bool StealthTryFetch<T>(DependencyLayer @this, out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
-			=> @this.StealthTryFetch(out dependency, out stackLevel, useFallbacks, out layerFoundIn);
-
+		//	protected static bool StealthTryFetch<T>(DependencyLayer @this, out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+		//		=> @this.StealthTryFetch(out dependency, out stackLevel, useFallbacks, out layerFoundIn);
+		protected static bool TryFetch<T>(DependencyLayer @this, out T dependency, bool useFallbacks)
+			=> @this.TryFetch(out dependency, useFallbacks);
 
 
 		internal abstract void CloseInjectFrame(InjectFrame frame);
@@ -237,21 +239,21 @@ namespace SimpleDI
 			? dependency
 			: null;
 
-		/// <summary>
-		/// <see langword="[Call inside using()]"></see>
-		/// 
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="dependency"></param>
-		/// <param name="found"></param>
-		/// <returns></returns>
-		public bool TryFetch<T>(out T dependency, bool useFallbacks)
-			=> this.StealthTryFetch(
-				out dependency,
-				out int stackLevel,
-				useFallbacks,
-				out var layerFoundIn
-			) && dependency != null;
+		//	/// <summary>
+		//	/// <see langword="[Call inside using()]"></see>
+		//	/// 
+		//	/// </summary>
+		//	/// <typeparam name="T"></typeparam>
+		//	/// <param name="dependency"></param>
+		//	/// <param name="found"></param>
+		//	/// <returns></returns>
+		//	public bool TryFetch<T>(out T dependency, bool useFallbacks)
+		//		=> this.StealthTryFetch(
+		//			out dependency,
+		//			out int stackLevel,
+		//			useFallbacks,
+		//			out var layerFoundIn
+		//		) && dependency != null;
 
 
 

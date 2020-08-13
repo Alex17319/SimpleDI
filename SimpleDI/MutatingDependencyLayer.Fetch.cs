@@ -17,28 +17,29 @@ namespace SimpleDI
 {
 	public sealed partial class MutatingDependencyLayer
 	{
-		// Returns true if any dependency was successfully found, even if it's null
-		private protected override bool StealthTryFetch<T>(out T dependency, out int stackLevel, bool useFallbacks, out DependencyLayer layerFoundIn)
+		private protected override bool TryFetch<T>(out T dependency, bool useFallbacks)
 		{
 			if (!this._dependencyStacks.TryGetValue(typeof(T), out var stack) || stack.Count == 0) {
 				// No stack found, or found stack is empty
-				if (useFallbacks && this.Fallback != null)
-					return Logic.SucceedIf(DependencyLayer.StealthTryFetch(
-						this.Fallback,
-						out dependency,
-						out stackLevel,
-						useFallbacks,
-						out layerFoundIn
-					));
-				else return Logic.Fail(out dependency, out stackLevel, out layerFoundIn);
+
+				if (!useFallbacks && this.Fallback == null)
+					return Logic.Fail(out dependency);
+
+				return Logic.SucceedIf(DependencyLayer.TryFetch(
+					this.Fallback,
+					out dependency,
+					useFallbacks
+				)); 
 			}
 
 			var dInfo = stack.Peek();
 
+			if (dInfo.IsNull) return Logic.Fail(out dependency);
+
+			dInfo.RunOnFetch();
+
 			return Logic.Succeed(
-				out dependency, (T)dInfo.dependency,
-				out stackLevel, dInfo.stackLevel,
-				out layerFoundIn, this
+				out dependency, (T)dInfo.dependency
 			);
 		}
 	}
