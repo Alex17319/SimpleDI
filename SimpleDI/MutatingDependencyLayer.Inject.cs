@@ -145,7 +145,7 @@ namespace SimpleDI
 		// generic type parameter, etc. Or maybe it can be??
 		private void addToStack_internal(object dependency, Type toMatchAgainst)
 		{
-			var toPush = new StackedDependency(currentStackLevel + 1, dependency, StateWrapper.WrapDependencyState(dependency));
+			var toPush = new StackedDependency(currentStackLevel + 1, dependency, StateWrapper.GetDepStateHandlers(dependency));
 
 			// Must only call RunOnInject() AFTER checking to throw any exceptions.
 			// Must also only call it BEFORE any lasting changes are made, in case it throws an exception.

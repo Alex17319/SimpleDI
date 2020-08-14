@@ -20,7 +20,7 @@ namespace SimpleDI
 
 		public readonly int stackLevel;
 		public readonly object dependency;
-		public readonly IStateWrapper[] injectState;
+		public readonly I[] injectState;
 		public readonly bool isSnapshot;
 
 		public bool IsNull => dependency == null;
@@ -98,6 +98,16 @@ namespace SimpleDI
 			}
 		}
 	}
+
+	//	internal class StateWrappedDependency
+	//	{
+	//	
+	//	}
+	//	
+	//	internal class StateWrappedDependency<TInj, TSnap> : StateWrappedDependency
+	//	{
+	//	
+	//	}
 }
 
 //*/
