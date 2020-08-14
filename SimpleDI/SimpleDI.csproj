@@ -77,7 +77,6 @@
     <Compile Include="DisposeExceptions\DisposeExceptionsManager.cs" />
     <Compile Include="DisposeExceptions\RegionCloseErrorEventArgs.cs" />
     <Compile Include="DisposeExceptions\DisposeInnerException.cs" />
-    <Compile Include="Utility Classes\CollectionExtensions.cs" />
     <Compile Include="Utility Classes\LayerCloseMismatchEventArgs.cs" />
     <Compile Include="DisposeExceptions\SafeDisposeExceptionsRegion.cs" />
     <Compile Include="SimultaneousInjectFrame.cs" />

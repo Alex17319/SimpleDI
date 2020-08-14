@@ -46,14 +46,14 @@ namespace SimpleDI
 			if (SnapshotReady) return _snapshot;
 
 			
-			var builder = ImmutableDictionary.CreateBuilder<Type, SnapshottedDependency>();
+			var builder = ImmutableDictionary.CreateBuilder<Type, StackedDependency>();
 			builder.AddRange(enumerateDependencies());
 
-			IEnumerable<KeyValuePair<Type, SnapshottedDependency>> enumerateDependencies()
+			IEnumerable<KeyValuePair<Type, StackedDependency>> enumerateDependencies()
 			{
 				foreach (var kvp in _dependencyStacks)
 				{
-					if (kvp.Value.Count != 0) yield return new KeyValuePair<Type, SnapshottedDependency>(
+					if (kvp.Value.Count != 0) yield return new KeyValuePair<Type, StackedDependency>(
 						kvp.Key,
 						kvp.Value.Peek().RunOnSnapshot()
 					);
@@ -70,16 +70,16 @@ namespace SimpleDI
 		}
 
 		private protected override void AddAsFallbackToSnapshot(
-			ImmutableDictionary<Type, SnapshottedDependency>.Builder snapshotBuilder
+			ImmutableDictionary<Type, StackedDependency>.Builder snapshotBuilder
 		) {
 			snapshotBuilder.AddRange(enumerateAddableDependencies());
 			
-			IEnumerable<KeyValuePair<Type, SnapshottedDependency>> enumerateAddableDependencies()
+			IEnumerable<KeyValuePair<Type, StackedDependency>> enumerateAddableDependencies()
 			{
 				foreach (var kvp in _dependencyStacks)
 				{
 					if (kvp.Value.Count != 0 && !snapshotBuilder.ContainsKey(kvp.Key)) {
-						yield return new KeyValuePair<Type, SnapshottedDependency>(
+						yield return new KeyValuePair<Type, StackedDependency>(
 							kvp.Key,
 							kvp.Value.Peek().RunOnSnapshot()
 						);

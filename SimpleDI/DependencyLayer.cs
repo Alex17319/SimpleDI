@@ -39,12 +39,12 @@ namespace SimpleDI
 
 		public abstract DependencySnapshot Snapshot(bool useFallbacks);
 		private protected abstract void AddAsFallbackToSnapshot(
-			ImmutableDictionary<Type, SnapshottedDependency>.Builder snapshotBuilder
+			ImmutableDictionary<Type, StackedDependency>.Builder snapshotBuilder
 		);
 
 		private protected static void AddAsFallbackToSnapshot(
 			DependencyLayer fallback,
-			ImmutableDictionary<Type, SnapshottedDependency>.Builder snapshotBuilder
+			ImmutableDictionary<Type, StackedDependency>.Builder snapshotBuilder
 		) => fallback.AddAsFallbackToSnapshot(snapshotBuilder);
 
 		protected bool Disposed { get; private set; } = false;

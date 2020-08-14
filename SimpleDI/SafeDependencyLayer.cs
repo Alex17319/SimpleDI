@@ -87,7 +87,7 @@ namespace SimpleDI
 			throw new NotImplementedException();
 		}
 
-		private protected override void AddAsFallbackToSnapshot(ImmutableDictionary<Type, SnapshottedDependency>.Builder snapshotBuilder)
+		private protected override void AddAsFallbackToSnapshot(ImmutableDictionary<Type, StackedDependency>.Builder snapshotBuilder)
 		{
 			throw new NotImplementedException();
 		}
