@@ -20,26 +20,22 @@ namespace SimpleDI
 	//		ISnapshotStateWrapper RunOnSnapshot();
 	//	}
 
-	internal interface IDepStateHandler {
+	internal abstract class DepStateHandler {
 		//	//Note: Accessed via reflection
 		//	IStateWrapper Wrap(IStatefulDependency dep);
 
-		object OnInject(IStatefulDependency dep);
+		public abstract object OnInject(object dep);
+		public abstract void OnFetch(object dep, object injectState);
+		public abstract object OnSnapshot(object dep, object injectState);
+		public abstract void OnFetchFromSnapshot(object dep, object injectState, object snapshotState);
 
-		void OnFetch(IStatefulDependency dep, object injectState);
+		private DepStateHandler() { }
 
-		object OnSnapshot(IStatefulDependency dep, object injectState);
-
-		void OnFetchFromSnapshot(IStatefulDependency dep, object injectState, object snapshotState);
-	}
-
-	public static class StateWrapper //: IStateWrapper
-	{
 		// TODO: Test that this doesn't lock when reading, & so won't slow down other threads too much (except when still
 		// loading stuff up)
 		// Otherwise may need to use something threadstatic but that'll add duplicate data & keep getting
 		// cleared if someone makes & kills lots of threads
-		private static readonly ConcurrentDictionary<Type, IDepStateHandler[]> wrapperBuilders = new ConcurrentDictionary<Type, IDepStateHandler[]>();
+		private static readonly ConcurrentDictionary<Type, DepStateHandler[]> wrapperBuilders = new ConcurrentDictionary<Type, DepStateHandler[]>();
 
 		//	internal StateWrapper() { }
 		//	
@@ -51,12 +47,12 @@ namespace SimpleDI
 		//	void IStateWrapper.RunOnFetch() => RunOnFetch();
 		//	ISnapshotStateWrapper IStateWrapper.RunOnSnapshot() => RunOnSnapshot();
 
-		internal static IDepStateHandler[] GetDepStateHandlers(object dependency)
+		internal static DepStateHandler[] LookupHandlersFor(object dependency)
 		{
 			if (dependency == null || !(dependency is IStatefulDependency statefulDep)) return null;
 
 			Type dType = dependency.GetType();
-			if (wrapperBuilders.TryGetValue(dType, out IDepStateHandler[] handlers)) {
+			if (wrapperBuilders.TryGetValue(dType, out DepStateHandler[] handlers)) {
 				return handlers;
 			}
 
@@ -77,7 +73,7 @@ namespace SimpleDI
 			//	return wrapped;
 		}
 
-		private static IDepStateHandler[] MakeHandlers(IStatefulDependency dependency)
+		private static DepStateHandler[] MakeHandlers(IStatefulDependency dependency)
 		{
 			if (!typeof(IStatefulDependency<,>).IsAssignableFrom(dependency.GetType())) return null;
 
@@ -86,12 +82,12 @@ namespace SimpleDI
 				null
 			);
 
-			IDepStateHandler[] builders = new IDepStateHandler[stateInterfaces.Length];
+			DepStateHandler[] builders = new DepStateHandler[stateInterfaces.Length];
 
 			for (int i = 0; i < stateInterfaces.Length; i++) {
 				Type[] genericArgs = stateInterfaces[i].GenericTypeArguments;
-				builders[i] = (IDepStateHandler)(
-					typeof(DepStateHandler<,>)
+				builders[i] = (DepStateHandler)(
+					typeof(StateHandlerInternal<,>)
 					.MakeGenericType(genericArgs)
 					.GetConstructor(Type.EmptyTypes)
 					.Invoke(null)
@@ -101,23 +97,23 @@ namespace SimpleDI
 			return builders;
 		}
 
-		private class DepStateHandler<TInj, TSnap> : IDepStateHandler {
+		private class StateHandlerInternal<TInj, TSnap> : DepStateHandler {
 			//	//Note: Accessed via reflection
 			//	public IStateWrapper Wrap(IStatefulDependency dep)
 			//		=> new StateWrapper<TInj, TSnap>((IStatefulDependency<TInj, TSnap>)dep);
 
-			public DepStateHandler() { }
+			public StateHandlerInternal() { }
 
-			public object OnInject(IStatefulDependency dep)
+			public override object OnInject(object dep)
 				=> ((IStatefulDependency<TInj, TSnap>)dep).OnInject();
 
-			public void OnFetch(IStatefulDependency dep, object injectState)
+			public override void OnFetch(object dep, object injectState)
 				=> ((IStatefulDependency<TInj, TSnap>)dep).OnFetch((TInj)injectState);
 
-			public object OnSnapshot(IStatefulDependency dep, object injectState)
+			public override object OnSnapshot(object dep, object injectState)
 				=> ((IStatefulDependency<TInj, TSnap>)dep).OnSnapshot((TInj)injectState);
 
-			public void OnFetchFromSnapshot(IStatefulDependency dep, object injectState, object snapshotState)
+			public override void OnFetchFromSnapshot(object dep, object injectState, object snapshotState)
 				=> ((IStatefulDependency<TInj, TSnap>)dep).OnFetchFromSnapshot((TInj)injectState, (TSnap)snapshotState);
 		}
 	}

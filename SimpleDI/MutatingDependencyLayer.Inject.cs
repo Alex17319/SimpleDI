@@ -145,7 +145,7 @@ namespace SimpleDI
 		// generic type parameter, etc. Or maybe it can be??
 		private void addToStack_internal(object dependency, Type toMatchAgainst)
 		{
-			var toPush = new StackedDependency(currentStackLevel + 1, dependency, StateWrapper.GetDepStateHandlers(dependency));
+			var toPush = new StackedDependency(currentStackLevel + 1, dependency);
 
 			// Must only call RunOnInject() AFTER checking to throw any exceptions.
 			// Must also only call it BEFORE any lasting changes are made, in case it throws an exception.
@@ -154,7 +154,7 @@ namespace SimpleDI
 
 			if (_dependencyStacks.TryGetValue(toMatchAgainst, out var stack))
 			{
-				if (stack.Peek().StackLevel == currentStackLevel + 1) throw new InvalidOperationException(
+				if (stack.Peek().stackLevel == currentStackLevel + 1) throw new InvalidOperationException(
 					$"Cannot inject dependency against type '{toMatchAgainst.FullName}' " +
 					$"as there is already a dependency present against the same type at the current stack level " +
 					$"(stack level = '{currentStackLevel + 1}'). Most likely cause: calling a method to inject multiple " +
@@ -238,8 +238,8 @@ namespace SimpleDI
 			);
 
 			StackedDependency toRemove = stack.Peek();
-			if (toRemove.StackLevel != frameStackLevel) throw new InjectFrameCloseException(
-				$"Top element of stack for type '{type}' has stack level '{toRemove.StackLevel}' " +
+			if (toRemove.stackLevel != frameStackLevel) throw new InjectFrameCloseException(
+				$"Top element of stack for type '{type}' has stack level '{toRemove.stackLevel}' " +
 				$"but frame to be closed has a different stack level: '{frameStackLevel}'.",
 				DisposeExceptionsManager.WrapLastExceptionThrown()
 			);
