@@ -27,6 +27,26 @@ namespace SimpleDI
 		{
 			this.dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
 		}
+
+		public T Fetch<T>() {
+			if (dependencies.TryGetValue(typeof(T), out var dInfo)) {
+				dInfo.RunOnFetchFromSnapshot();
+				return (T)dInfo.Dependency;
+			}
+			throw new DependencyNotFoundException(typeof(T));
+		}
+
+		public T FetchOrNull<T>() where T : class
+			=> throw new NotImplementedException();
+
+		public T? FetchStructOrNull<T>() where T : struct
+			=> throw new NotImplementedException();
+
+		public T? FetchNullableOrNull<T>() where T : struct
+			=> throw new NotImplementedException();
+
+		public bool TryFetch<T>(out T dependency)
+			=> throw new NotImplementedException();
 	}
 }
 

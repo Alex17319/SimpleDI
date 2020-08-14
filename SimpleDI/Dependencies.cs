@@ -36,6 +36,7 @@ namespace SimpleDI
 			}
 
 			if (layer.Fallback == null) {
+				// TODO: Fix that in the case of fallbacks being modified via reflection, this error message won't make sense
 				throw new InvalidDIStateException(
 					"Cannot close root dependency layer (Fallback == null).",
 					DisposeExceptionsManager.WrapLastExceptionThrown()
@@ -51,6 +52,7 @@ namespace SimpleDI
 				// So if we failed to find it, reflection must have been used to either create a
 				// layer without adding it, or used to modify the fallback of a layer.
 				// Someones done that, throw an exception
+				// TODO: Fix that in the case of fallbacks being modified via reflection, this error message won't make sense
 				throw new InvalidDIStateException(
 					$"{nameof(MutatingDependencyLayer)} '{layer}' was never opened.",
 					DisposeExceptionsManager.WrapLastExceptionThrown()

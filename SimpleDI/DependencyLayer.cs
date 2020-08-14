@@ -6,7 +6,12 @@ namespace SimpleDI
 {
 	public abstract class DependencyLayer
 	{
-		// TODO: Call OnFetch, and then implement snapshots and call OnSnapshot and OnFetchFromSnapshot.
+		// TODO: TEST DEPENDENCY STATE API
+		// Currently it looks like that all isn't too much use - once OnFetch has been called, the dependency would
+		// need to record the state data somewhere, but what if multiple pieces of code have fetched the dependency?
+		// May well need some kind of wrapper around the dependency that has to be opened with a using() and so then
+		// closed afterwards, or a FetchFrame again that calls an OnFetchClosed method, I'm not sure if either will
+		// work
 
 		// ---- TODO ----
 		// Work out how useful fetching outer dependencies is in practise if dependencies are to be stored
