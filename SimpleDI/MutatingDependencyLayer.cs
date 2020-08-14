@@ -16,6 +16,9 @@ namespace SimpleDI
 {
 	public sealed partial class MutatingDependencyLayer : DependencyLayer
 	{
+		// TODO: Now that we no longer need to do binary searches though
+		// each stack, could the data structure used here be improved?
+		
 		// For future improvement: Maybe try to implement wildcard dependencies more efficiently (wildcard = returned
 		// when any parent class/interface is requested, rather than just when exactly the correct type is requested).
 		// Most of the time I'm guessing wildcards won't be used though, so shouldn't sacrifice efficiency elsewhere.
@@ -86,18 +89,6 @@ namespace SimpleDI
 					}
 				}
 			}
-		}
-
-
-		/// <summary>
-		/// Compares by stack level only
-		/// </summary>
-		private class StackSearchComparer : IComparer<StackedDependency>
-		{
-			public StackSearchComparer() { }
-
-			public int Compare(StackedDependency x, StackedDependency y)
-				=> x.StackLevel.CompareTo(y.StackLevel);
 		}
 	}
 }
