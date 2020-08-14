@@ -39,7 +39,7 @@ namespace SimpleDI
 			dInfo.RunOnFetch();
 
 			return Logic.Succeed(
-				out dependency, (T)dInfo.dependency
+				out dependency, (T)dInfo.Dependency
 			);
 		}
 	}

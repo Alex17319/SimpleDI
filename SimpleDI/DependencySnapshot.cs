@@ -15,17 +15,17 @@ namespace SimpleDI
 {
 	public struct DependencySnapshot
 	{
-		internal readonly ImmutableDictionary<Type, StackedDependency> Dependencies;
+		internal readonly ImmutableDictionary<Type, StackedDependency> dependencies;
 
-		public bool IsNull => Dependencies == null;
+		public bool IsNull => dependencies == null;
 		public static readonly DependencySnapshot Null = default;
 
-		public bool IsEmpty => !IsNull && Dependencies.IsEmpty;
+		public bool IsEmpty => !IsNull && dependencies.IsEmpty;
 		public static readonly DependencySnapshot Empty = new DependencySnapshot(ImmutableDictionary.Create<Type, StackedDependency>());
 
 		internal DependencySnapshot(ImmutableDictionary<Type, StackedDependency> dependencies)
 		{
-			this.Dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
+			this.dependencies = dependencies ?? throw new ArgumentNullException(nameof(dependencies));
 		}
 	}
 }

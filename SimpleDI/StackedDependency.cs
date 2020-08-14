@@ -18,16 +18,17 @@ namespace SimpleDI
 		// split this struct into two, one that stores the dependency & state, and the other
 		// that wraps that struct alongside the stack level
 
-		public readonly int stackLevel;
-		public readonly object dependency;
-		public readonly object[] injectState;
-		public readonly object[] snapshotState;
-		public readonly DepStateHandler[] stateHandlers;
+		public readonly int StackLevel;
+		public readonly object Dependency;
+
+		private readonly object[] injectState;
+		private readonly object[] snapshotState;
+		private readonly DepStateHandler[] stateHandlers;
 		
 		private static readonly object[] STATELESS_SNAPSHOT_FLAG = new object[0];
 		public bool IsSnapshot => snapshotState != null;
 
-		public bool IsNull => dependency == null;
+		public bool IsNull => Dependency == null;
 		public static readonly StackedDependency Null = default;
 
 		public StackedDependency(int stackLevel, object dependency)
@@ -35,8 +36,8 @@ namespace SimpleDI
 			if (stackLevel < 1) throw new ArgumentOutOfRangeException(nameof(stackLevel), stackLevel, "Must be at least 1");
 			if (dependency == null) throw new ArgumentNullException(nameof(dependency));
 
-			this.stackLevel = stackLevel;
-			this.dependency = dependency;
+			this.StackLevel = stackLevel;
+			this.Dependency = dependency;
 			this.stateHandlers = DepStateHandler.LookupHandlersFor(dependency);
 			this.injectState = stateHandlers == null ? null : new object[stateHandlers.Length];
 			this.snapshotState = null;
@@ -44,8 +45,8 @@ namespace SimpleDI
 
 		private StackedDependency(int stackLevel, object dependency, object[] injectState, object[] snapshotState, DepStateHandler[] stateHandlers)
 		{
-			this.stackLevel = stackLevel;
-			this.dependency = dependency;
+			this.StackLevel = stackLevel;
+			this.Dependency = dependency;
 			this.injectState = injectState;
 			this.snapshotState = snapshotState;
 			this.stateHandlers = stateHandlers;
@@ -62,7 +63,7 @@ namespace SimpleDI
 			if (stateHandlers == null) return;
 
 			for (int i = 0; i < this.stateHandlers.Length; i++) {
-				this.injectState[i] = this.stateHandlers[i]?.OnInject(dependency);
+				this.injectState[i] = this.stateHandlers[i]?.OnInject(Dependency);
 			}
 		}
 		
@@ -76,7 +77,7 @@ namespace SimpleDI
 			if (stateHandlers == null) return;
 
 			for (int i = 0; i < this.injectState.Length; i++) {
-				this.stateHandlers[i]?.OnFetch(dependency, this.injectState[i]);
+				this.stateHandlers[i]?.OnFetch(Dependency, this.injectState[i]);
 			}
 		}
 		
@@ -86,8 +87,8 @@ namespace SimpleDI
 			);
 
 			if (stateHandlers == null) return new StackedDependency(
-				this.stackLevel,
-				this.dependency,
+				this.StackLevel,
+				this.Dependency,
 				injectState: null,
 				snapshotState: STATELESS_SNAPSHOT_FLAG,
 				stateHandlers: null
@@ -95,9 +96,9 @@ namespace SimpleDI
 
 			object[] snapshotState = new object[this.stateHandlers.Length];
 			for (int i = 0; i < this.stateHandlers.Length; i++) {
-				snapshotState[i] = this.stateHandlers[i]?.OnSnapshot(dependency, this.injectState[i]);
+				snapshotState[i] = this.stateHandlers[i]?.OnSnapshot(Dependency, this.injectState[i]);
 			}
-			return new StackedDependency(this.stackLevel, this.dependency, this.injectState, snapshotState, stateHandlers);
+			return new StackedDependency(this.StackLevel, this.Dependency, this.injectState, snapshotState, stateHandlers);
 		}
 
 		internal void RunOnFetchFromSnapshot() {
@@ -111,7 +112,7 @@ namespace SimpleDI
 			if (this.stateHandlers == null) return;
 
 			for (int i = 0; i < this.stateHandlers.Length; i++) {
-				this.stateHandlers[i]?.OnFetchFromSnapshot(dependency, this.injectState[i], this.snapshotState[i]);
+				this.stateHandlers[i]?.OnFetchFromSnapshot(Dependency, this.injectState[i], this.snapshotState[i]);
 			}
 		}
 	}

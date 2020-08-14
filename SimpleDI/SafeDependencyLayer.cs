@@ -72,7 +72,7 @@ namespace SimpleDI
 			=> _stack.Peek().dependencies.TryGetValue(typeof(T), out StackedDependency dep)
 			? Logic.SucceedIf(
 				!dep.IsNull,
-				out dependency, (T)dep.dependency
+				out dependency, (T)dep.Dependency
 			)
 			: useFallbacks
 			? Logic.SucceedIf(DependencyLayer.TryFetch(

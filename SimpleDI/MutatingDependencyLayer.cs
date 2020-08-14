@@ -97,7 +97,7 @@ namespace SimpleDI
 			public StackSearchComparer() { }
 
 			public int Compare(StackedDependency x, StackedDependency y)
-				=> x.stackLevel.CompareTo(y.stackLevel);
+				=> x.StackLevel.CompareTo(y.StackLevel);
 		}
 	}
 }
