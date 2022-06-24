@@ -1,14 +1,14 @@
 # SimpleDI
 
-A scoped dependency-injection framework based on C# using statements. For example:
+A scoped dependency-injection/service-locator framework based on C# `using` statements. For example:
 
-```
-using (Dependencies.Inject(new MyClass()) {
+```C#
+using (Dependencies.Inject<IMyClass>(new MyClass()) {
     Foo();
 }
 
 void Foo() {
-    var myClass = Dependencies.Fetch<MyClass>();
+    var myClass = Dependencies.Fetch<IMyClass>();
 }
 ```
 
